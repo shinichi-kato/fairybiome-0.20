@@ -17,6 +17,13 @@ module.exports = {
         icon: 'static/images/icon.svg',
       },
     },
+    {
+      resolve: `gatsby-source-filesystem`,
+      options: {
+        name: `userAvatar`,
+        path: `${__dirname}/static/avatar/user`,
+      },
+    },
   ],
   siteMetadata: {
     title: '妖精バイオーム',

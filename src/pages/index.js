@@ -1,24 +1,24 @@
-import * as React from 'react';
+import React from 'react';
+import { graphql } from 'gatsby';
 import Container from '@mui/material/Container';
-import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
-import ProTip from '../components/ProTip';
-import Link from '../components/Link';
-import Copyright from '../components/Copyright';
 
-export default function Index() {
+
+import AuthProvider from '../components/Auth/AuthProvider';
+import EcosystemProvider from '../components/Ecosystem/EcosystemProvider';
+import useFirebase from '../useFirebase';
+
+import EcosystemTest from '../components/Ecosystem/EcosystemTest';
+
+export default function IndexPage(){
+  const [firebase, firestore] = useFirebase();
+
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" sx={{ mb: 2 }}>
-          Material UI Gatsby example
-        </Typography>
-        <Link to="/about" color="secondary">
-          Go to the about page
-        </Link>
-        <ProTip />
-        <Copyright />
-      </Box>
+    <Container maxWidth='xs' disableGutters sx={{ height: '100vh' }}>
+           <AuthProvider firebase={firebase} firestore={firestore}>
+           <EcosystemProvider firestore={firestore}> 
+            <EcosystemTest />
+           </EcosystemProvider>
+           </AuthProvider>
     </Container>
-  );
+  )
 }

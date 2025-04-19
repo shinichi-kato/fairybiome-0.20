@@ -1,0 +1,22 @@
+# common_knowledge
+# 共通の知識
+{:AIR_FAIRY} {:called} 空気の妖精
+{:AIR_FAIRY} {:isA} {:FAIRY}
+{:AIR_FAIRY} {:describedAs} 空を飛べる、空気をきれいにする妖精 
+
+{:EARTH_FAIRY} {:called} 大地の妖精
+{:EARTH_FAIRY} {:isA} {:FAIRY}
+{:EARTH_FAIRY} {:describedAs} 地下に住んでいて荷物を運ぶ妖精
+
+{:WATER_FAIRY} {:called} 水の妖精
+{:WATER_FAIRY} {:isA} {:FAIRY}
+{:WATER_FAIRY} {:describedAs} 水の中にいて、水をきれいにする妖精
+
+{:SWAMP_FAIRY} {:called} 沼の妖精
+{:SWAMP_FAIRY} {:isA} {:FAIRY}
+{:SWAMP_FAIRY} {:describedAs} 沼の中にいる妖精
+
+{:FAIRY} {:called} 妖精
+{:FAIRY} {:called} フェアリー
+{:FAIRY} {:isA} {:participant} 
+{:FAIRY} {:describedAs}

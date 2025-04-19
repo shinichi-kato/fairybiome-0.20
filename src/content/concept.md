@@ -19,7 +19,7 @@ biomebot-0.20
 {:FOOD} {:called} 食べ物,食料,フード
 ```
 チャットボット辞書の入力文字列に含まれる「食べ物」や「フード」はいずれも{:FOOD}に置き換えられる。同時に置き換えられる前の文字列は{food}というセッション変数に保持される。
-また出力文字列に含まれる「食べ物」も一旦{:FOOD}に置き換えられ、最終的には{food}を経由して最初に記憶された文字列に置き換えられる。これにより一つのテキストから意味の似た様々な文を生成する。
+また出力文字列に含まれる「食べ物」も一旦{:FOOD}に置き換えられ、{food}を経由して最初に記憶された文字列に置き換えられる。これにより一つのテキストから意味の似た様々な文を生成する。
 
 ## 概念
 
@@ -106,31 +106,37 @@ user アウルラのこと、ルラって呼んでいい？ -> bot 「ルラ」�
 ## ユーザについての概念とその学習
 チャットボットがユーザと知り合ったとき、チャットボットには
 ```
-{:USER01} {:called} {:EMPTY} # まずは名前を聞くところから
+{:USER01} {:called} {:WANTED} # まずは名前を聞くところから
 {:USER01} {:isA} {:HUMAN} # 多分人間でしょう
-{:USER01} {:describedAs} {:EMPTY}
-{:USER01} {:likes} {:EMPTY}
-{:USER01} {:likes} {:EMPTY} # 複数置くことで複数の知識を聞く
-{:USER01} {:dislike} {:EMPTY}
-{:USER01} {:dislike} {:EMPTY}
-{:USER01} {:friendOf} {:EMPTY}
+{:USER01} {:describedAs} {:WANTED}
+{:USER01} {:likes} {:WANTED}
+{:USER01} {:likes} {:WANTED} # 複数置くことで複数の知識を聞く
+{:USER01} {:dislike} {:WANTED}
+{:USER01} {:dislike} {:WANTED}
+{:USER01} {:friendOf} {:WANTED}
+
+{:USER01} {:isConnected} 1  # ユーザとコネクト状態にある
+{:USER01} {:files} {:USER01_240112}  # この項目はログインした日ごとに増える
+{:USER01_240112} {:sounds} {:WANTED} # 今日の状態
 ```
-という知識がinsertされる。
+という知識がinsertされる。このWANTEDを減らすことがチャットボットの動機である。
+
+
 チャットボットが未知の単語をユーザから教えられたとき、チャットボットには
 ```
 {:CONCEPT001} {:called} ラーメン
-{:CONCEPT001} {:isA} {:EMPTY}
-{:CONCEPT001} {:describedAs} {:EMPTY}
-{:USER01} {:empty} {:CONCEPT001}
+{:CONCEPT001} {:isA} {:WANTED}
+{:CONCEPT001} {:describedAs} {:WANTED}
+{:USER01} {:WANTED} {:CONCEPT001}
 ```
-という知識がinsertされる。これらに書かれた{:EMPTY}は空欄を意味し、この{:EMPTY}をなくすことがチャットボットの動機の一つとなる。{:EMPTY}をなくすには優先順位があり、
+という知識がinsertされる。これらに書かれた{:WANTED}は空欄を意味し、この{:WANTED}をなくすことがチャットボットの動機の一つとなる。{:WANTED}をなくすには優先順位があり、
 
 ## やり取りを通した未知の概念の学習
 ### ユーザの名前を知る
-{:called}が{:EMPTY}になっているのは最も優先して解決すべき状況である。そのためチャットボットは最初にユーザの名前を尋ねる。
+{:called}が{:WANTED}になっているのは最も優先して解決すべき状況である。そのためチャットボットは最初にユーザの名前を尋ねる。
 
 {:called} {:patternedBy} {:YOUR_NAME_PATTERN}
-{:YOUR_NAME_PATTERN} {:select} bot {:USER01} {:called} {:EMPTY} := はじめまして！お名前なんていうの？
+{:YOUR_NAME_PATTERN} {:select} bot {:USER01} {:called} {:WANTED} := はじめまして！お名前なんていうの？
 {:YOUR_NAME_PATTERN} {:accept} user {?name}です。
 {:YOUR_NAME_PATTERN} {:insert} bot {?name}さんだね。よろしくね。私は{:AURULA}だよ。:= {:USER01} {:called} {?name}
 
@@ -210,7 +216,7 @@ stateDiagram-v2
 ```
 # チャットボットからの質問 ＝＝＝＞ ユーザからの情報提供へつづく
 {:selectByBot} {:isDefinedAs} {:SELECT_NAME}
-{:SELECT_NAME} {:parse} bot {:USER01} {:called} {:EMPTY} := はじめまして！お名前なんていうの？
+{:SELECT_NAME} {:parse} bot {:USER01} {:called} {:WANTED} := はじめまして！お名前なんていうの？
 
 # チャットボットからの情報提供
 {:selectByBot} {:isDefinedAs} {:SELECT_MESSAGE}
@@ -248,7 +254,7 @@ stateDiagram-v2
 ```
 
 ## チャットボットが知りたいことをユーザに問い合わせ
-チャットボットが知らないことは{:EMPTY}のあるtripleという知識である。{:EMPTY}をなくすためチャットボットはユーザに対して質問を行う。
+チャットボットが知らないことは{:WANTED}のあるtripleという知識である。{:WANTED}をなくすためチャットボットはユーザに対して質問を行う。
 
 ```mermaid
 stateDiagram-v2
@@ -271,6 +277,15 @@ stateDiagram-v2
 記憶する{:insert}
 
 
-{:YOUR_NAME_PATTERN} {:select} bot {:USER01} {:called} {:EMPTY} := はじめまして！お名前なんていうの？
+{:YOUR_NAME_PATTERN} {:select} bot {:USER01} {:called} {:WANTED} := はじめまして！お名前なんていうの？
 {:YOUR_NAME_PATTERN} {:accept} user {?name}です。
 {:YOUR_NAME_PATTERN} {:insert} bot {?name}さんだね。よろしくね。私は{:AURULA}だよ。:= {:USER01} {:called} {?name}
+
+
+## ユーザとのコネクト状態管理
+妖精はユーザと会話中の間コネクト状態になり、次回起動時も姿を見せるようになる。
+この記憶はチャットボットの知識
+{:USER01} {:isConnected} 1
+で表され、チャットボットやユーザからの操作によりコネクト状態は解除できる。
+なお、アプリ起動時にはすべてのチャットボットについてこれをチェックする必要がある。
+これはindexedDB内のデータ確認で実行し、firestoreは利用しない。
