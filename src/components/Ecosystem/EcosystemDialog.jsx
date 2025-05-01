@@ -8,46 +8,77 @@ EcosystemDialog
 
 import React, { useReducer } from 'react';
 import Stack from '@mui/material/Stack';
+import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Slider from '@mui/material/Slider';
 import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Grid from '@mui/material/Grid';
+import Button from '@mui/material/Button';
 
 import * as ecosystem from './ecosystem';
 
 function DateSlider({ state, handleChangeDays }) {
 
   return (
-    <Stack direction="row">
-      <Slider
-        alia-label="daySlider"
-        disabled={state.disabled}
-        max={365}
-        min={1}
-        value={state.days}
-        onChange={handleChangeDays}
-      />
-      {`${state.month}/${state.date}`}
-    </Stack>
-
+    <Grid container spacing={2}>
+      <Grid size={8}>
+        <Slider
+          alia-label="daySlider"
+          disabled={state.disabled}
+          max={364}
+          min={1}
+          value={state.days}
+          onChange={handleChangeDays}
+        />
+      </Grid>
+      <Grid size={4}>
+        {`${('00' + state.month).slice(-2)}/${('00' + state.date).slice(-2)}`}
+      </Grid>
+    </Grid>
   )
 }
 
-function MinutesSlider({state, handleChangeMinutes}){
+function MinutesSlider({ state, handleChangeMinutes }) {
 
   return (
-    <Stack direction="row">
-      <Slider
-        alia-label="daySlider"
-        disabled={state.disabled}
-        max={365}
-        min={1}
-        value={state.minutes}
-        onChange={handleChangeMinutes}
-      />
-      {`${state.hour}/${state.minute}`}
-    </Stack>
+    <Grid container spacing={2}>
+      <Grid size={8}>
+        <Slider
+          alia-label="minuteSlider"
+          disabled={state.disabled}
+          max={23 * 60 + 59}
+          min={1}
+          value={state.minutes}
+          onChange={handleChangeMinutes}
+        />
+      </Grid>
+      <Grid size={4}>
+        {`${('00' + state.hour).slice(-2)}:${('00' + state.minute).slice(-2)}`}
+      </Grid>
+    </Grid>
+  )
+}
 
+function WeatherSlider({ state, handleChangeBaro }) {
+  return (
+    <Grid container spacing={2}>
+      <Grid size={8}>
+        <Slider
+          alia-label="minuteSlider"
+          disabled={state.disabled}
+          max={7}
+          min={0}
+          step={1}
+          value={state.baro}
+          onChange={handleChangeBaro}
+        />
+      </Grid>
+      <Grid size={4}>
+        {state.weather}
+      </Grid>
+    </Grid>
   )
 }
 
@@ -55,28 +86,37 @@ const initialState = {
   disabled: true,
   days: 1,
   minutes: 1,
-  barometer: 1,
-  month: 0,
+  baro: 0,
+  weather: 'SNOWY',
+  month: 1,
   date: 1,
-  hour:0,
-  minute:0
+  hour: 0,
+  minute: 0
 }
 
 function reducer(state, action) {
   switch (action.type) {
-    case 'TOGGLE_ENABLED': {
+    case 'TOGGLE_DISABLED': {
       return {
         ...state,
-        enabled: !state.disabled
+        disabled: action.disabled
       }
     }
 
     case 'CHANGE_DAYS': {
+      let weather;
+      if (state.month !== action.month) {
+        weather = ecosystem.WEATHER_MAP[action.month - 1][state.baro]
+      } else {
+        weather = state.weather;
+      }
+
       return {
         ...state,
         days: action.days,
         month: action.month,
-        date: action.date
+        date: action.date,
+        weather: weather,
       }
     }
 
@@ -91,61 +131,95 @@ function reducer(state, action) {
       }
     }
 
+    case 'CHANGE_BARO': {
+      return {
+        ...state,
+        baro: action.baro,
+        weather: ecosystem.WEATHER_MAP[state.month - 1][action.baro]
+      }
+    }
     default:
-      throw new Error (`invalid action ${action}`);
+      throw new Error(`invalid action ${action}`);
   }
 }
 
-export default function EcosystemDialog({ ecoState, handleCloseDialog }) {
+export default function EcosystemDialog({ uid, ecoState, handleCloseDialog }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  if(!state.days && ecoState.month){
+  if (!state.days && ecoState.month) {
 
   }
 
-  function handleChangeDays(days) {
+  function handleToggleDisabled() {
+    const disabled = !state.disabled;
+    ecosystem.DB.fixedFeature.update(uid, { disabled: disabled });
+    dispatch({ type: "TOGGLE_DISABLED", disabled: disabled });
+  }
+
+  function handleChangeDays(event, newValue) {
     const d = new Date();
-    d.setMonth(1);
-    d.setDate(days);
-    const month = d.getMonth()+1;
+    d.setMonth(0);
+    d.setDate(newValue);
+    const month = d.getMonth() + 1;
     const date = d.getDate();
 
-    ecosystem.DB.fixedFeature.put({uid:state.uid, month:month,date:date}).then();
-    dispatch({ type: 'CHANGE_DAYS', days: days, month:month,date:date});
+    ecosystem.DB.fixedFeature.update(uid, { month: month, date: date }).then();
+    dispatch({ type: 'CHANGE_DAYS', days: newValue, month: month, date: date });
   }
 
-  function handleChangeMinutes(m){
+  function handleChangeMinutes(event, newValue) {
     const d = new Date();
     d.setHours(0);
-    d.setMinutes(state.minutes);
+    d.setMinutes(newValue);
     const hour = d.getHours();
     const minute = d.getMinutes();
 
-    ecosystem.DB.fixedFeature.put({uid:state.uid, hour: hour,minute:minute}).then();
-    dispatch({type:'CHANGE_MINUTES',minutes: m, hour:hour,minute:minute});
+    ecosystem.DB.fixedFeature.update(uid, { hour: hour, minute: minute }).then();
+    dispatch({ type: 'CHANGE_MINUTES', minutes: newValue, hour: hour, minute: minute });
+  }
+
+  function handleChangeBaro(event, newValue) {
+    dispatch({ type: 'CHANGE_BARO', baro: newValue });
   }
 
   return (
-    <Paper elevation={4}
-      xs={{ width: "80%" }}
-    >
-      <Stack>
-        <Switch label="日時・天候を設定する"
-          checked={!state.disabled}
-          onChange={() => dispatch({ type: 'TOGGLE_ENABLED' })}
-        />
-        <Typography>日付</Typography>
-        <DateSlider
-          state={state}
-          handleChangeDays={handleChangeDays}
-        />
-        <Typography>時刻</Typography>
-        <MinutesSlider
-          state={state}
-          handleChangeMinutes={handleChangeMinutes}
-        />
+    <Container sx={{ pt: 5 }}
 
-      </Stack>
-    </Paper>
+    >
+      <Paper elevation={4}
+        sx={{ p: 2, width: "70%", mx: "auto" }}
+      >
+        <Stack>
+          <FormControlLabel control={<Switch
+            checked={!state.disabled}
+            onChange={handleToggleDisabled}
+          />}
+            label="日時・天候を固定する"
+          />
+
+          <Typography>日付</Typography>
+          <DateSlider
+            state={state}
+            handleChangeDays={handleChangeDays}
+          />
+          <Typography>時刻</Typography>
+          <MinutesSlider
+            state={state}
+            handleChangeMinutes={handleChangeMinutes}
+          />
+          <Typography>天候</Typography>
+          <WeatherSlider
+            state={state}
+            handleChangeBaro={handleChangeBaro}
+          />
+          <Button
+            variant="contained"
+            onClick={handleCloseDialog}
+          >
+            閉じる
+          </Button>
+        </Stack>
+      </Paper>
+    </Container>
   )
 }

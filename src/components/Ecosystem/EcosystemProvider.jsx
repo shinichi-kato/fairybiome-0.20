@@ -87,24 +87,24 @@ import { AuthContext } from '../Auth/AuthProvider';
 import * as sky from './sky';
 import * as ecosystem from './ecosystem';
 import EcosystemDialog from './EcosystemDialog';
-import {MessageFactory} from '../../message';
+import { MessageFactory } from '../../message';
 
 export const EcosystemContext = createContext();
 
 const initialState = {
   uid: null,
-  month: undefined,
-  date: undefined,
-  weather: undefined,
+  month: null,
+  date: null,
+  weather: null,
   background: "",
-  dayState: undefined,
-  dayCycle: undefined,
+  dayState: null,
+  dayCycle: null,
   fixed: {
-    weather: undefined,
-    month: undefined,
-    date: undefined,
-    hour: undefined,
-    minute: undefined,
+    weather: null,
+    month: null,
+    date: null,
+    hour: null,
+    minute: null,
   },
   noise: new NoiseGenerator(1, ecosystem.CLIMATE_SCALE),
   channel: null,
@@ -118,10 +118,16 @@ const initialState = {
  * @return {Object} 新しいstate
  */
 function reducer(state, action) {
-  console.log('Ecosystem ', action);
+  // console.log('Ecosystem ', action);
   switch (action.type) {
     case 'UPDATE_FIXED':
-      const fixed = action.fixed
+      const fixed = action.fixed;
+      // if (fixed?.disabled){
+      //   return {
+
+      //   }
+      // }
+
       let weather = fixed?.weather;
       let dayCycle = state.dayCycle;
       let background = state.background;
@@ -135,26 +141,23 @@ function reducer(state, action) {
         (month && month !== state.month) ||
         (date && date !== state.date)) {
         dayCycle = sky.getDayCycle(month, date);
+        background = sky.getGradation(dayCycle, hour * 60 + minute)
       }
 
-      // 時刻が指定された場合、それが現在と異なっていたら
-      // backgroundを更新
+      // 指定された時刻がstateと異なっていたらbackgroundを更新
       if (!background ||
         (hour && hour !== state.hour) ||
         (minute && minute !== state.minute)) {
         background = sky.getGradation(dayCycle, hour * 60 + minute)
       }
 
-      if (!background) {
-        background = sky.getGradation(dayCycle, state.hour * 60 + state.minute)
-      }
-
-      // 天候が指定されない場合、時刻に合わせた内容に変化させる
-      if (!weather || !state.weather) {
-        weather = ecosystem.WEATHER_MAP[month][Math.round(state.noise.getValue() * 7)];
-      }
+      // fixedが変更されていない場合
       return {
         ...state,
+        month: month || state.month,
+        date: date || state.date,
+        hour: hour || state.hour,
+        minute: minute || state.minute,
         weather: weather,
         background: background,
         dayCycle: dayCycle,
@@ -177,7 +180,7 @@ function reducer(state, action) {
     case 'SET_CHANNEL':
       return {
         ...state,
-        channel: action.payload.channel
+        channel: action.channel
       }
 
     case 'SET_DAY_STATE': {
@@ -215,6 +218,23 @@ export default function EcosystemProvider({ children }) {
   const [isOpenDialog, setIsOpenDialog] = useState(false);
   const auth = useContext(AuthContext);
 
+  // ---------------------------------------------------
+  // broadcast channelの初期化
+  //
+
+  useEffect(() => {
+    let ch;
+    if (!state.channel) {
+      ch = new BroadcastChannel('biomebot');
+      dispatch({ type: 'SET_CHANNEL', channel: ch });
+    }
+    return () => {
+      if (ch) {
+        ch.close();
+      }
+    };
+  }, [state.channel]);
+
   // ----------------------------------------------------------
   // デバッグ用パラメータが変化したらupdateEcosystem
   //
@@ -223,6 +243,7 @@ export default function EcosystemProvider({ children }) {
     let subscription = null;
 
     if (auth.uid) {
+      console.log("subscription ");
       subscription = liveQuery(() =>
         ecosystem.DB.fixedFeature
           .where('uid')
@@ -230,9 +251,7 @@ export default function EcosystemProvider({ children }) {
           .first()
       ).subscribe({
         next: (data) => {
-          if (data) {
             dispatch({ type: 'UPDATE_FIXED', fixed: data });
-          }
         },
         error: (error) => {
           console.error('EcosystemDB subscription error:', error);
@@ -243,7 +262,7 @@ export default function EcosystemProvider({ children }) {
     return () => {
       subscription.unsubscribe();
     }
-  }, [auth.uid, state.background, state.dayCycle]);
+  }, [auth.uid]);
 
 
   // ----------------------------------------------------------
@@ -266,10 +285,6 @@ export default function EcosystemProvider({ children }) {
     これらの更新を行わない。
     
     */
-    const fixed = state.fixed;
-    if (fixed.weather) {
-      return false;
-    }
 
     const now = new Date();
     const month = now.getMonth() + 1;
@@ -287,7 +302,7 @@ export default function EcosystemProvider({ children }) {
     const background = sky.getGradation(dayCycle, hour * 60 + minute);
 
     // 人工天候
-    const weather = ecosystem.WEATHER_MAP[month][Math.round(state.noise.getValue() * 7)];
+    const weather = ecosystem.WEATHER_MAP[month][Math.round(state.noise.getValue(now) * 7)];
 
     return ({
       month: month,
@@ -318,7 +333,7 @@ export default function EcosystemProvider({ children }) {
     // const latestEvent = getLatestEvent(updated);
     // if (latestEvent) {
     //   sendMessage(`{ECOSYSTEM_START_${latestEvent}}`);
-    //   dispatch({ type: 'SET_DAY_STATE', event: latestEvent });
+    //   dispatch({ type: 'SET_DAfixedY_STATE', event: latestEvent });
     // }
 
   }, state.run ? ecosystem.UPDATE_INTERVAL : null);
@@ -345,7 +360,7 @@ export default function EcosystemProvider({ children }) {
   }
 
   function handleCloseDialog() {
-    dispatch({ type: 'CLOSE_DIALOG' })
+    setIsOpenDialog(false);
   }
 
   return (
@@ -353,7 +368,6 @@ export default function EcosystemProvider({ children }) {
       value={{
         weather: state.weather,
         dayState: state.dayState,
-        ecoState: `{ECOSYS_${state.weather}}`,
         openDialog: handleOpenDialog,
         run: () => dispatch({ type: 'RUN' }),
         stop: () => dispatch({ type: 'STOP' }),
@@ -368,6 +382,7 @@ export default function EcosystemProvider({ children }) {
       >
         {isOpenDialog ?
           <EcosystemDialog
+            uid={auth.uid}
             ecoState={state}
             closeDialog={handleCloseDialog}
           />

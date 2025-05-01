@@ -37,9 +37,9 @@ export function getGradation(dayCycle, totalMin) {
       // 午前
       if (totalMin < dayCycle.sunrise) {
         // 日の出前
-        const offset = totalMin - dayCycle.sunrise - 60;
+        let offset = totalMin - dayCycle.sunrise + 60;
         if (offset < 0) {
-          const offset = totalMin - dayCycle.sunrise - 120;
+          offset = totalMin - dayCycle.sunrise + 120;
           if (offset < 0) {
             return [sc.NIGHT, sc.NIGHT, 0]
           } else {
@@ -51,13 +51,13 @@ export function getGradation(dayCycle, totalMin) {
       }
       else {
         // 日の出後
-        const offset = totalMin - dayCycle.sunrise + 60;
+        let offset = totalMin - dayCycle.sunrise - 60;
         if (offset < 0) {
-          return [sc.SUNRISE, sc.MORNING, offset];
+          return [sc.SUNRISE, sc.MORNING, offset+60];
         } else {
-          const offset = totalMin - dayCycle.sunrise + 120;
-          if (offset) {
-            return [sc.MORNING, sc.BEFORENOON, offset];
+          offset = totalMin - dayCycle.sunrise - 120;
+          if (offset<0) {
+            return [sc.MORNING, sc.BEFORENOON, offset+60];
           } else {
             return [sc.BEFORENOON, sc.BEFORENOON, 0];
           }
@@ -67,9 +67,9 @@ export function getGradation(dayCycle, totalMin) {
     } else
       // 午後
       if (totalMin < dayCycle.sunset) {
-        const offset = totalMin - dayCycle.sunset - 60;
+        let offset = totalMin - dayCycle.sunset + 60;
         if (offset < 0) {
-          const offset = totalMin - dayCycle.sunset - 120;
+          offset = totalMin - dayCycle.sunset + 120;
           if (offset < 0) {
             return [sc.AFTERNOON, sc.AFTERNOON, 0]
           } else {
@@ -79,13 +79,14 @@ export function getGradation(dayCycle, totalMin) {
           return [sc.EVENING, sc.SUNSET, offset]
         }
       } else {
-        const offset = totalMin - dayCycle.sunset + 60;
+        let offset = totalMin + dayCycle.sunset - 60;
         if (offset < 0) {
+
           return [sc.SUNSET, sc.DUSK, offset]
         } else {
-          const offset = totalMin - dayCycle.sunset + 120;
-          if (offset) {
-            return [sc.DUSK, sc.NIGHT, offset]
+          offset = totalMin - dayCycle.sunset - 120;
+          if (offset<0) {
+            return [sc.DUSK, sc.NIGHT, offset+120]
           } else {
             return [sc.NIGHT, sc.NIGHT, 0]
           }

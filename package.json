@@ -28,9 +28,11 @@
     "develop": "gatsby develop",
     "build": "gatsby build",
     "serve": "gatsby serve",
+    "test": "vitest",
     "post-update": "echo \"codesandbox preview only, need an update\" && pnpm update --latest"
   },
   "devDependencies": {
+    "fake-indexeddb": "^6.0.0",
     "vitest": "^3.0.9",
     "worker-loader": "^3.0.8"
   }
