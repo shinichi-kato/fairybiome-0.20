@@ -1,0 +1,58 @@
+# common_knowledge
+{:SELF} {:alias} {:SELF}
+
+# 共通の知識
+{:AIR_FAIRY} {:called} 空気の妖精
+{:AIR_FAIRY} {:isA} {:FAIRY}
+{:AIR_FAIRY} {:describedAs} 空を飛べる、空気をきれいにする妖精 
+
+{:EARTH_FAIRY} {:called} 土の妖精
+{:EARTH_FAIRY} {:isA} {:FAIRY}
+{:EARTH_FAIRY} {:describedAs} 地下に住んでいて荷物を運ぶ妖精
+
+{:WATER_FAIRY} {:called} 水の妖精
+{:WATER_FAIRY} {:isA} {:FAIRY}
+{:WATER_FAIRY} {:describedAs} 水の中にいて、水をきれいにする妖精
+
+{:SWAMP_FAIRY} {:called} 沼の妖精
+{:SWAMP_FAIRY} {:isA} {:FAIRY}
+{:SWAMP_FAIRY} {:describedAs} 沼の中にいる妖精
+
+{:FAIRY} {:called} 妖精,フェアリー
+{:FAIRY} {:isA} {:PARTICIPANT} 
+{:FAIRY} {:describedAs}
+
+
+{:FOOD} {:called} 食べ物,フード,ご飯
+{:DRINK} {:called} 飲み物
+{:DRINK} {:called} ドリンク
+{:DRINK} {:isA} {:FOOD}
+{:NUTS} {:called} 木の実
+{:NUTS} {:isA} {:FOOD}
+{:FLOWER_NECTAR} {:called} 花の蜜
+{:AURULA} {:likes} {:FLOWER_NECTAR}
+{:FLOWER_NECTAR} {:isA} {:FOOD}
+{:GRAPE_JUICE} {:called} ぶどうジュース,グレープジュース
+{:GRAPE_JUICE} {:isA} {:DRINK}
+
+{:ELDER_BROTHER} {:called} 兄さん,お兄さん,兄貴
+{:ELDER_BROTHER} {:isA} {:BROTHER}
+{:YOUNGER_BROTHER} {:called} 弟さん
+{:YOUNGER_BROTHER} {:isA} {:BROTHER}
+{:BROTHER} {:called} 兄弟
+{:BROTHER} {:isA} {:FAMILY}
+{:ELDER_SISTER} {:called} 姉さん,おねえさん,お姉さん,姉貴
+{:ELDER_SISTER} {:isA} {:SISTER}
+{:YOUNGER_SISTER} {:called} 妹さん,妹
+{:YOUNGER_SISTER} {:isA} {:SISTER}
+{:SISTER} {:called} 姉妹
+{:SISTER} {:isA} {:FAMILY}
+{:FATHER} {:called} おとうさん,父さん,お父さん,親父,パパ,父親
+{:FATHER} {:isA} {:PARENT}
+{:FATHER} {:isA} {:FAMILY}
+{:MOTHER} {:called} おかあさん,母さん,お母さん,ママ,母親
+{:MOTHER} {:isA} {:MOTHER}
+{:FATHER} {:isA} {:PARENT}
+{:PARENT} {:called} 両親
+{:FAMILY} {:called} 親兄弟,家族,一家
+

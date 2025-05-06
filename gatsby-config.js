@@ -24,6 +24,21 @@ module.exports = {
         path: `${__dirname}/static/avatar/user`,
       },
     },
+    {
+      resolve: `gatsby-source-filesystem`,
+      options: {
+        name: `botAvatar`,
+        path: `${__dirname}/static/avatar/chatbot`,
+      },
+    },
+    {
+      resolve: `gatsby-source-filesystem`,
+      options: {
+        name: `botModules`,
+        path: `${__dirname}/static/botModules/`,
+      },
+    },
+    `gatsby-transformer-plaintext`,
   ],
   siteMetadata: {
     title: '妖精バイオーム',
@@ -39,5 +54,6 @@ module.exports = {
       '#9e88aa', // purple
     ],
     balloonBackgroundAlpha: 0.8,
+
   },
 };

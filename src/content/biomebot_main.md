@@ -8,10 +8,11 @@ main ではチャットボットに共通するパラメータの定義および
 
 | 名前           | 例           | 概要                           |
 |----------------|--------------|--------------------------------|
-| 概念タグ       | {:CONCEPT}   | 概念を記述するタグ             |
-| システム変数   | {SYSTEM}     | ユーザが利用できない変数       |
+| 固有概念タグ   | {:CONCEPT}   | 個人の概念タグ。毎回評価される |
+| システム変数   | {SYSTEM}     | 毎回評価されるタグ             |
 | 永続変数       | {Persistent} | 記憶が永続する変数             |
 | セッション変数 | {session}    | セッション終了時に消滅する変数 |
+| 揮発変数       | ?volatile    | 一度の返答生成で消滅する変数   |
 
 ## mainの記述例
 
@@ -31,7 +32,6 @@ main ではチャットボットに共通するパラメータの定義および
 # 通常のタグ記憶。概念の知識でないパラメータはこちらで定義
 {BACKGROUND_COLOR} #de53a1
 {AVATAR_DIR} wing-fairy-girl
-{CURIOSITY_FACTOR} 0.8
 {DESU} です。,でーす。
 
 # 概念から変数への代入
@@ -47,10 +47,11 @@ subject, predicate, objectの3要素(triple)で記述し、tripleの集合をグ
 mainではチャットボット固有の知識と概念の体系をグラフとして表す。
 ここで概念は `{:Concept}` のように':'で始まる名前を{}で囲うことで表す。
 
-### 概念の問い合わせ(簡略化したturtle)
+### 概念の問い合わせ(簡略化したsparql)
 
 main ではsparql類似の記法で概念記憶を検索できる。
-下記のように記憶タグに続いてクエリを記述すると、タグが評価されるたびに検索が実行され。
+下記のようにタグに続いてクエリを記述すると、タグが評価されたときに検索が実行され、
+検索結果が代入される。
 
 ```
 {food} SELECT ?y WHERE {:AURULA} {:likes} ?x. ?x {:isA}+ {:OBJECT}. ?x {:called} ?y
@@ -143,13 +144,13 @@ user アウルラのこと、ルラって呼んでいい？ -> bot 「ルラ」�
 ## ユーザについての概念とその学習
 チャットボットがユーザと知り合ったとき、チャットボットには
 ```
+{:USER01} {:id} firestore上のId
 {:USER01} {:called} {:WANTED} # まずは名前を聞くところから
 {:USER01} {:isA} {:HUMAN} # 多分人間でしょう
 {:USER01} {:describedAs} {:WANTED}
 {:USER01} {:likes} {:WANTED}
 {:USER01} {:dislike} {:WANTED}
 {:USER01} {:friendOf} {:WANTED}
-{:AURULA} {:knows} {:USER01}
 
 {:USER01} {:files} {:USER01_240112}  # この項目はログインした日ごとに増える
 {:USER01_240112} {:sounds} {:WANTED} # 今日の状態
@@ -174,3 +175,17 @@ user アウルラのこと、ルラって呼んでいい？ -> bot 「ルラ」�
 
 {:YOUR_NAME_PATTERN3} {:match} "user {YES}"
 {:YOUR_NAME_PATTERN3} {:ifMatch} "bot ありがとう！ よろしくね。私は{BOT_NAME}だよ。=> delete {user} {:called} {:WANTED} insert {user} {:called} ?x"
+
+```
+
+## 個別の知識と常識
+個別の知識はstatic/botModules/<botId>/mainに記述され、共通の知識はstatic/botModules直下に格納されたすべての知識ファイルである。
+個別の知識と共通の知識で同じ名前のタグが使われた場合、個別の知識が優先される。またdeleteやinsertの操作は個別の知識に対してのみ実行される。
+
+## 入出力文字列への利用
+### 入力文字列のタグ化
+入力文字列に概念や単語タグの{:called}が含まれる場合、それをタグに置き換えることで表記のゆらぎを吸収する。
+
+`リンゴは好き？`→`{:APPLE}は{:likes}？`
+
+このときもとの表層形を記憶し、それを出力文字列に戻す際に利用する。

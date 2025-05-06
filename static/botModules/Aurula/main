@@ -35,19 +35,43 @@
 # ユーザがアプリを終了するまで続く
 #
 
-# 設定値
-# UI
-{BACKGROUND_COLOR} #de53a1
-{AVATAR_DIR} wing-fairy-girl
-# 応答時間 msec
-{RESPONSE_INTERVALS} 300,400
+# firestoreやconceptStoreなどで使う識別名 
+{:AURULA} {:id} "Aurula"
 
 # 名前
 {:AURULA} {:called} アウルラ
 
+# 種族
+{:AURULA} {:isA} {:AIR_FAIRY}
+
+# UI上の外観
+{:AURULA} {:backgroundColor} #de53a1
+{:AURULA} {:avatarDir} wing-fairy-girl
+
+# 応答時間(msec)
+# 値が小さいとせっかち風に、大きいと熟考風になる
+{:AURULA} {:responseInterval} 300,400
+
+# 前回会話したユーザと再び会話する確率(0-100)
+{:AURULA} {:resumeTalkRate} 80%
+
+# 昼間の出現確率(%)
+{:AURULA} {:encounterRateDay} +30%
+
+# 夜間の出現確率(%)
+{:AURULA} {:encounterRatenight} +10%
+
+# 好天時の出現確率(%)
+{:AURULA} {:encounterRateGoodWeather} +20% 
+
+# 悪天候時の出現確率(%)
+{:AURULA} {:encounterRateBadWeather} -20%
+
+# 開始時のパート
+{:AURULA} {:startingPart} main
+
 # 妖精自身の解釈している世界
 {:AURULA} {:describedAs} 
-{:AURULA} {:isA} {:AIR_FAIRY}
 {:AURULA} {:likes} {:SPHAERA}
 {:AURULA} {:knows} {:IWATOKO}
 {:AURULA} {:dislikes} {:SWAMP_FAIRY}

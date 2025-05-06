@@ -6,15 +6,22 @@ ConceptStore - indexedDBを記憶媒体とした簡易triple store
 
 ### construct
 
-const cs = new ConceptStore(ownerId);
-チャットボットのownerIdを与える。
+const cs = new ConceptStore(storeId);
+チャットボットのIdをstoreIdとして与えることでチャットボット固有の知識にアクセスする。
+
+const commonCs = new ConceptStore();
+storeIdを指定しない場合、selectはあらゆるチャットボットの固有の知識に加え
+storeId無指定の状態でinsertされたアクセスする。
+
 
 
 ### insert
 
 cs.insert("{:AURULA} {:called} 'アウルラ'");
 
-複数行入力、'#'で始まる行はコメントとして無視。
+配列により複数行入力も可能。一つの文字列に複数のパターンを記述する際は
+改行または'.'で区切る。'#'で始まる行はコメントとして無視される。
+
 cs.insert(`
 # アウルラの基本情報
 {:AURULA} {:called} 'アウルラ'
@@ -35,8 +42,19 @@ selectおよびwhereはsparqlの記法のサブセットのように振る舞い
 出力するべき変数の列挙、whereではtripleを組み合わせた問い合わせを記述する。
 
 cs.select('?s, ?food_name')
+  .distinct()
   .where('{:AURULA} {:likes} ?s.?s {:isA} {:FOOD}.?s {:called} ?food_name')
   .toArray()
+
+**注意**
+where句のクエリは前から順に評価されるため、変数がないものを先頭に、変数が一つの
+ものを次に、変数が２つのものをその次に配置する。例えば
+
+正: .where("?s {:isA} {:FAIRY}.?s {:called} ?x   ")
+誤: .where("?s {:called} ?x   .?s {:isA} {:FAIRY}")
+
+である。正の例ではすべてのチャットボットの概念タグと名前を取得できるが、誤の例では
+結果は[]である。
 
 ### 削除
 await cs.select("*").where('{:NUTS} {:called} "果実"').delete();
@@ -47,29 +65,36 @@ delete操作により、_db.activeのレコードが削除され、_db.deleted�
 await cs.vacuum();
 _db.deletedのレコードをすべて削除する
 
-## 今後実装予定の機能
-### property path
-https://qiita.com/frogcat/items/c4b398e50bfc7479cea6
+### 
 
 */
 import Dexie from 'dexie';
 
+
+
 export class ConceptStore {
   /**
    * ConceptStoreの生成
-   * @param {*} ownerId チャットボットのId
+   * @param {*} storeId 
    */
-  constructor(ownerId) {
+  constructor(storeId = null) {
     this._db = new Dexie("ConceptStore");
     this._db.version(1).stores({
-      active: '++id,ownerId,s,p,o,date',
-      deleted: '++id,ownerId,s,p,o,date'
+      active: '++id,storeId,s,p,o,date',
+      deleted: '++id,storeId,s,p,o,date'
     });
-    this.ownerId = ownerId;
+    this.setStoreId(storeId);
+  }
+
+  async setStoreId(storeId) {
+    this.storeId = storeId;
     this.store = this._db.active;
   }
 
-  async insert(triples) {
+  async insert(triples,storeId=null) 
+  { 
+    storeId = storeId || this.storeId;
+
     let jobs = [];
     const date = (new Date()).toLocaleDateString("jp-JP");
 
@@ -79,19 +104,22 @@ export class ConceptStore {
 
     for (let triple of lines) {
       const aSpo = spo(triple);
-      jobs.push(this.store.add({
-        ownerId: this.ownerId,
-        s:aSpo.s,
-        p:aSpo.p,
-        o:aSpo.o,
-        date: date
-      }));
+      for (let o of aSpo.o.split(',')) {
+        jobs.push(this.store.add({
+          storeId: storeId,
+          s: aSpo.s,
+          p: aSpo.p,
+          o: o.trim(),
+          date: date
+        }));
+
+      }
     }
 
     return await Promise.all(jobs);
   }
 
-  async delete (triples){
+  async delete(triples) {
     // 変数を含むものも削除する
     const selector = new ConceptStoreSelect(this, "*");
     return await selector.where(triples).delete();
@@ -103,17 +131,21 @@ export class ConceptStore {
   }
 
   async toArray() {
-    return await this.store.where('ownerId').equals(this.ownerId).toArray();
+    return await this.store.where('storeId').equals(this.storeId).toArray();
   }
 
   // select ?x where {:AURULA} {:called} ?x.{:AURULA} {:isA} {:FAIRY}
   //のように一文でのクエリを実行し結果のリストを返す
   async execute(line) {
-    const selectRegexp = /^select\s+(\?\w+)\s+where\s+(.+)$/i;
+    const selectRegexp = /^select\s+(distinct\s+)?([\*\?\w\s,]+)\s+where\s+(.+)$/i;
     let match = selectRegexp.exec(line);
     if (match) {
-      const selector = new ConceptStoreSelect(this, match[1]);
-      return await selector.where(match[2]).toArray();
+      const selectorText = match[2].trim();
+      const selector = new ConceptStoreSelect(this, selectorText === '*' ? '*' : selectorText.split(',').map(s => s.trim()).join(', '));
+      if (match[1]) {
+        return await selector.distinct().where(match[3]).toArray();
+      }
+      return await selector.where(match[3]).toArray();
     }
 
     const insDelRegexp = /^insert\s+(.+)\s+delete\s+(.+)$/i;
@@ -153,6 +185,12 @@ export class ConceptStoreSelect {
   constructor(cs, selector) {
     this.cs = cs;
     this.selector = selector;
+    this._distinct = false;
+  }
+
+  distinct() {
+    this._distinct = true;
+    return this;
   }
 
   where(wClause) {
@@ -169,6 +207,7 @@ export class ConceptStoreWhere {
     this.wClause = wClause;
     this._filterFn = null;
     this._orderBy = null;
+    this._distinct = csSelect._distinct;
   }
 
   filter(fn) {
@@ -192,7 +231,7 @@ export class ConceptStoreWhere {
       seen.add(current);
 
       const records = await this.cs.store
-        .where({ ownerId: this.cs.ownerId, p: predicate, o: current })
+        .where({ storeId: this.cs.storeId, p: predicate, o: current })
         .toArray();
 
       for (const triple of records) {
@@ -218,7 +257,7 @@ export class ConceptStoreWhere {
       seen.add(current);
 
       const nextRecords = await this.cs.store
-        .where({ ownerId: this.cs.ownerId, s: current, p: predicate })
+        .where({ storeId: this.cs.storeId, s: current, p: predicate })
         .toArray();
 
       for (const triple of nextRecords) {
@@ -251,7 +290,7 @@ export class ConceptStoreWhere {
         return [];
       }
 
-      const dict = { ownerId: this.cs.ownerId };
+      const dict = this.cs.storeId !== null ? { storeId: this.cs.storeId } : {};
       if (!pattern.s.startsWith('?')) dict.s = pattern.s;
       if (!pattern.p.startsWith('?')) dict.p = pattern.p;
       if (!pattern.o.startsWith('?')) dict.o = pattern.o;
@@ -314,6 +353,16 @@ export class ConceptStoreWhere {
       finalResult = finalResult.filter(this._filterFn);
     }
 
+    if (this._distinct) {
+      const seen = new Set();
+      finalResult = finalResult.filter(row => {
+        const key = JSON.stringify(row);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
     if (this._orderBy) {
       const { varName, asc } = this._orderBy;
       finalResult.sort((a, b) => {
@@ -328,6 +377,11 @@ export class ConceptStoreWhere {
 
   async toArray() {
     return await this._exec();
+  }
+
+  async first() {
+    const result = await this._exec();
+    return result[0]
   }
 
   async delete() {
