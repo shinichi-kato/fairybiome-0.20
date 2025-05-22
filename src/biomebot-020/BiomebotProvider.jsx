@@ -6,8 +6,10 @@ BiomebotProvider
 
 
 ## 登場するチャットボットの決定
-0. 全チャットボットの全botModuleは一度coceptStoreにロードした後firestoreにアップロードしておく。
-各チャットボットのdocumentには更新日時、出現確率パラメータを集約。
+0. 全チャットボットのgraphql上のデータは'origin'と呼び、最新版をすべてConceptStore,MemoryStore,
+SequenceStore上にアップロードする。学習などにより獲得したデータは'gained'と呼び、ConceptStore,
+MemoryStore,SequenceStoreとfirestoreで同期する。
+ConceptStore上にはチャットボットの出現傾向を定義するパラメータが格納される。
 
 1. チャットボットはユーザと会話を始めると当日のログがConceptStoreに残る。
 同じ日に再びアプリを起動した場合は{:resumeTalkRate}の確率でこのチャットボットが
@@ -24,24 +26,19 @@ BiomebotProvider
 ランダムに選ばれる。
 
 ## データ入出力
-チャットボットのオリジナルデータはgraphqlで供給される。
-firestore上にデータがなければgraphqlのデータをindexedDB上にロードし、
-その内容をfirestoreにアップロードする。
-commonは全チャットボットで共有する常識のデータで、firebase上には
-保存しない。
-firestore上により新しいデータが存在したらindexedDB側にダウンロードする。
-indexedDB側のデータのほうがfirestoreよりも新し場合、firestoreにアップロードする。
-mainのファイルはsubjectによりいくつかに分割して保存する。
-etcのデータは主にgraphqlから供給され、会話により更新される頻度は低い。
-{:AURULA} は学習によって変化する可能性があるが、変化は少ない。また学習した部分は
-graphqlに影響されない。
-{:USER01}はユーザとの会話で生成されるデータでgraphql側にはデータがない。
-このように大まかに更新頻度ごとに分割することでデータ更新量の最小化とメンテナンス
-性の向上を図る。
+チャットボットのデータはConceptStoreとMemoryStoreの２つに格納され、それぞれ
+origin: graphqlにあるデータ
+gained: あとから獲得したデータ
+に分かれる。originのデータはgraphqlから供給され、firestore上には格納しない。
+また同じ内容のデータがあった場合はoriginよりもgainedが優先される。
+originのデータはgraphqlから供給されconceptStoreとMemoryStoreに格納される。
+gainedのデータはgraphqlにはなくconceptStore,MemoryStoreの内容がfirestoreに
+同期される。
 
+graphql上のデータは以下の形式で格納される。
 botModules
 ├ Aurula
-│    ├ main
+│    ├ main  # originのConceptStore,originのMemoryStore
 │    ├ greeting
 ︙    ︙
 │    └ story
@@ -51,23 +48,26 @@ firestore上では
 
 chatbots collection
 └ Aurula document
-  ├ updatesデータ
+  ├ catalogueデータ
     └ modules collection
         ├ main document
-        │   ├ {:AURULA} subjectが{:AURULA}のデータ
-        │   ├ {:USER01} subjectが{:USER01}のデータ,userのログ情報
-        │   └ etc subjectが上述以外のデータ
+        │   ├ concept 会話によって獲得したConceptStoreデータ
+        │   └ memory 会話によって獲得したMemoryStoreデータ
+
         ├ greeting document
         ︙
         └ story
 
-とする。firestore上には{:COMMON}は置かない。
-graphql-firestore間はファイルの更新日付を利用してsyncを行う。
+とする。firestore上にはoriginである{:COMMON}も置かない。
 
-firestoreとdexie間はデータを同じにする同期を最大一日一回行う。そのアクセス回数を減らすため、
-main以外は{updates}に各モジュールの更新日付を記載し、新しい方に同期をする。
+■ graphql - conceptStore, memoryStore間の同期(origin)
+conceptStore上ではinsertを行うとupdatedAtが変更される。この値とgraphqlのmodifiedTimeを
+比較し、graphql側が新しい場合conceptStore, memoryStoreにアップロードする。
 
-
+■ firestore - conceptStore, memoryStore間の同期(gained)
+conceptStoreのupdatedAtとfirestoreのupdatedAtを比較し、conceptStoreのほうが
+新しい場合はconceptStoreのデータをfirestoreに書き込む。逆の場合はfirestoreのデータを
+conceptStoreに書き込む
 */
 
 import React, {
@@ -75,12 +75,17 @@ import React, {
   useContext,
 } from 'react'
 import { useStaticQuery, graphql } from 'gatsby';
-import * as fs from './fsio';
-import * as gq from './gqio';
-import * as cs from './csio';
+import { botIo } from './botIo';
 
 import { ConceptStore } from '../conceptStore/conceptStore';
-import { WorkingMemoryStore } from '../workingMemoryStore/workingMemoryStore';
+import { MemoryStore } from '../memoryStore/memoryStore';
+
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    let j = Math.floor(Math.random() * (i + 1)); // 0 から i のランダムなインデックス
+    [array[i], array[j]] = [array[j], array[i]]; // 要素を入れ替えます
+  }
+}
 
 const biomebotQuery = graphql`
 query MyQuery {
@@ -109,11 +114,7 @@ export const BiomebotContext = createContext();
 
 const initialState = {
   botId: null,
-  globalConceptStore: new ConceptStore(),
-  botConceptStore: new ConceptStore(),
-  commonConceptStore: new ConceptStore("common"),
-  workingMemoryStore: new WorkingMemoryStore(),
-  fsUpdates: null,
+  storeUpdatedAt: null, // updateを行った日付
 }
 
 function reducer(state, action) {
@@ -125,71 +126,89 @@ function reducer(state, action) {
         channel: action.channel,
       };
     }
+
+    case 'storeUpdated': {
+      return {
+        ...state,
+        storeUpdatedAt: action.date
+      }
+    }
   }
 }
 
 export default function BiomebotProvider({ firebase, firestore, summon, initialPart, children }) {
   const auth = useContext(AuthContext);
+  const eco = useContext(EcosystemContext);
   const [state, dispatch] = useReducer(reducer, initialState);
   const snap = useStaticQuery(biomebotQuery);
 
   // ---------------------------------------------------
-  // graphql - conceptStore間のsync
+  // broadcast channelの初期化
+  //
+
+  useEffect(() => {
+    let ch;
+    if (!state.channel) {
+      ch = new BroadcastChannel('biomebot');
+      dispatch({ type: 'setChannel', channel: ch });
+    }
+    return () => {
+      if (ch) {
+        ch.close();
+      }
+    };
+  }, [state.channel]);
+
+  // ---------------------------------------------------
+  // データのsyncとチャットボットの起動
   // 
 
   useEffect(() => {
-    if (state.conceptStore) {
-      if (!state.fsUpdates) {
-        (async () => {
-          // gqにあってfsにないデータがあったら一旦conceptStoreに送ってfsにコピーする
-          const fsc = await fs.getCatalogue(firestore);
-          const gql = gq.getChatbotList(snap);
-          const uploaded = {}
+    if (auth.uid && !state.botId && firestore) {
+      const today = (new Date()).toLocaleDateString("jp-JP");
+      const userConcept = `{:${auth.conceptName}}`;
 
-          for (let botId of gql) {
-            if (!(botId in fsc)) {
-              const csScript = [];
-              const wmScript = [];
-              const lines = gql[botId].split('\n');
-              for (let line of lines) {
-                line = line.trim();
-                if (line.startsWith('#') || line === '') continue;
-                if (line.startsWith('{:')) {
-                  csScript.push(line);
-                }else if(line.startsWith('{')) {
-                  wmScript = [];
-                }
-              }
-              state.conceptStore.setStoreId(botId);
-              state.conceptStore.insert(csScript);
-              
-              let mainConcept = state.conceptStore.select('?x').where('?x {:id} ?y').first();
-              mainConcept = mainConcept['?x'];
+      (async () => {
+        // 0. ファイルを同期
+        if (state.storeUpdatedAt !== today) {
+          await botIo.syncOrigin(snap);
+          dispatch({ type: 'storeUpdated', date: today });
+        }
 
-              const graph = state.conceptStore.toArray();
+        const botId = await (async () => {
+          // 1. 今日ユーザと会話したチャットボットを抽出
+          //    そのチャットボットのresumeチェック
+          let currentBots = await botIo.multiStoreExecute(
+            `select ?x where ${userConcept} {:files} ?x.?x {:localeDate} "${today}"`
+          );
 
-              fs.saveConcepts(
-                botId,
-                mainConcept,
-                graph.filter(triple=>triple.s===mainConcept)
-              )
-              fs.saveConcepts(
-                botId,
-                'etc',
-                graph.filter(triple=>triple.s!==mainConcept)
-              )
-            }
+          shuffle(currentBots);
+          for (const currentBot of currentBots) {
+            botIo.ms.setStoreId(currentBot.storeId);
+            const resumeRate = await botIo.ms.retrieve("{RESUME_TALK_RATE}");
+            if (Math.random() < resumeRate) return currentBot.storeId;
           }
 
-          // catalogueを更新
-
-
+          // 2. ランダムに選んだチャットボットの出現チェック
+          while (true) {
+            for (const currentBot of currentBots) {
+              if (await botIo.checkEncounter(currentBot.storeId, eco.ecoState)) {
+                
+                return botIo.storeIdToBotId(currentBot.storeId);
+              }
+            }
+          }
         })();
-      }
 
+        dispatch({type: 'setBotId',botId: botId})
+        
+        // -------------------------------------------------
+        // biomebot のdeploy 
+
+      })();
     }
-  }, []);
 
+  }, []);
 
 
   // ---------------------------------------------------
@@ -208,4 +227,14 @@ export default function BiomebotProvider({ firebase, firestore, summon, initialP
       }
     };
   }, [state.channel]);
+
+  return (
+    <BiomebotContext.Provider
+      value={{
+        state: state,
+      }}
+    >
+      {children}
+    </BiomebotContext.Provider>
+  );
 }

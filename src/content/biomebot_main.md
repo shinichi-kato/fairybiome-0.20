@@ -142,6 +142,12 @@ user アウルラのこと、ルラって呼んでいい？ -> bot 「ルラ」�
 
 ```
 ## ユーザについての概念とその学習
+### ユーザの識別
+{:USER01}というconceptは
+{:USER01} {:id} "firestoreId"
+というtripleで特定のユーザに紐づけられる。この対応はチャットボットに依存せず
+firestoreのusers collection userdocで定義する。
+### ユーザについての概念
 チャットボットがユーザと知り合ったとき、チャットボットには
 ```
 {:USER01} {:id} firestore上のId
@@ -153,6 +159,7 @@ user アウルラのこと、ルラって呼んでいい？ -> bot 「ルラ」�
 {:USER01} {:friendOf} {:WANTED}
 
 {:USER01} {:files} {:USER01_240112}  # この項目はログインした日ごとに増える
+{:USER01_240112} {:localeDate} 2024/01/12 # toLocaleDateString("jp-JP") 
 {:USER01_240112} {:sounds} {:WANTED} # 今日の状態
 {:USER01_240112} {:teachedNewConcept} {:WANTED} # 今日獲得した知識
 

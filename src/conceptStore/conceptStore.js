@@ -59,7 +59,7 @@ where句のクエリは前から順に評価されるため、変数がないも
 ### 削除
 await cs.select("*").where('{:NUTS} {:called} "果実"').delete();
 select("*")とすることにより検索結果にidが含まれる。このidをキーとして削除が行われる。
-delete操作により、_db.activeのレコードが削除され、_db.deletedにレコードが追加される。
+delete操作により、_db.graphのレコードが削除され、_db.deletedにレコードが追加される。
 この機能はfirestore上のレコードとの同期を最小限のアクセスで実現する。
 
 await cs.vacuum();
@@ -80,41 +80,59 @@ export class ConceptStore {
   constructor(storeId = null) {
     this._db = new Dexie("ConceptStore");
     this._db.version(1).stores({
-      active: '++id,storeId,s,p,o,date',
-      deleted: '++id,storeId,s,p,o,date'
+      graph: '++id,storeId,s,p,o',
+      metaData: '[storeId+key]'
     });
     this.setStoreId(storeId);
+    this.store = this._db.graph;
   }
 
-  async setStoreId(storeId) {
+  setStoreId(storeId) {
     this.storeId = storeId;
-    this.store = this._db.active;
   }
 
-  async insert(triples,storeId=null) 
-  { 
-    storeId = storeId || this.storeId;
+  async updatedAt(storeId = null) {
+    storeId = storeId !==null ? storeId : this.storeId;
+    console.assert(storeId, "ConceptStore.updatedAt(): storeIdが指定されていません");
+
+    const f = await this._db.metaData
+      .where('[storeId+key]')
+      .equals([storeId, 'updatedAt'])
+      .first();
+    console.log("read updated At", storeId, f)
+    return f?.value;
+
+  }
+
+  async insert(triples, storeId = null) {
+    storeId = storeId !== null ? storeId : this.storeId;
+    console.assert(storeId, "ConceptStore.insert(): storeIdが指定されていません");
 
     let jobs = [];
-    const date = (new Date()).toLocaleDateString("jp-JP");
 
     const lines = (typeof triples === 'string' ? triples.split('\n') : triples)
       .map(line => line.trim())
       .filter(line => line.length > 0 && !line.startsWith('#')); // 空行コメント行除去
 
+
     for (let triple of lines) {
       const aSpo = spo(triple);
+      // console.log("ins line", storeId, aSpo)
       for (let o of aSpo.o.split(',')) {
         jobs.push(this.store.add({
           storeId: storeId,
           s: aSpo.s,
           p: aSpo.p,
           o: o.trim(),
-          date: date
         }));
 
       }
     }
+    jobs.push(this._db.metaData.put({
+      storeId: storeId,
+      key: 'updatedAt',
+      value: new Date()
+    }))
 
     return await Promise.all(jobs);
   }
@@ -126,12 +144,25 @@ export class ConceptStore {
 
   }
 
-  select(selector) {
+  select(selector, storeId = null) {
+    if (storeId) {
+      this.storeId = storeId;
+    }
     return new ConceptStoreSelect(this, selector);
   }
 
-  async toArray() {
-    return await this.store.where('storeId').equals(this.storeId).toArray();
+  async toArray(storeId) {
+    return await this.store.where('storeId').equals(storeId || this.storeId).toArray();
+  }
+
+  async dumps(storeId) {
+    const data = await this.toArray(storeId);
+    return data.map(node => (`${node.s} ${node.p} ${node.o}`));
+  }
+
+  async getAllStoreIds() {
+    const allRecords = await this.store.orderBy('storeId').uniqueKeys();
+    return allRecords.filter(id => id !== null && id !== undefined);
   }
 
   // select ?x where {:AURULA} {:called} ?x.{:AURULA} {:isA} {:FAIRY}
@@ -386,10 +417,6 @@ export class ConceptStoreWhere {
 
   async delete() {
     const result = await this._exec();
-    const date = (new Date()).toLocaleDateString("jp-JP");
-    //ここでactiveに存在したレコードをdeletedにコピーするが、idはコピー対象にしない
-    await this.cs._db.deleted.bulkAdd(result.map(record => (
-      { s: record.s, p: record.p, o: record.o, date: date })))
     await this.cs.store.bulkDelete(result.map(record => record.id));
   }
 }

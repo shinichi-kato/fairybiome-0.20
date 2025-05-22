@@ -3,10 +3,11 @@ EcosysProvider
 ====================================================
 
 チャットルームの昼夜・天候を提供する。昼夜の変化および天候の変化は
-現れる妖精の種類に影響し、状況に即した話題のトリガーになる。
-昼夜は日本での日の出・日没時刻から概算する。天候は人工的に生成する。
+現れる妖精の種類に影響し、状況に即した話題のトリガーにもなる。
+昼夜は日本での日の出・日没時刻から概算する。天候はノイズ関数から
+仮想的に生成する。
 時刻とそれに応じて変動する昼夜の状況、天候は自動的に変化を続けるが、
-デバッグのためそれらを固定する機能を付与する。
+デバッグのためそれらを固定する、または無指定とする機能を付与する。
 
 また時刻と天気の値をworkerを含めた任意の場所で計算可能にするため、
 indexedDB上に
@@ -51,7 +52,7 @@ db.version(1).stores({
 
 ## 天候
 
-天候はフラクタル的な乱数に従って変化する。ユーザに通知する
+天候はフラクタル的なノイズ関数に従って変化する。ユーザに通知する
 情報はメッセージとして伝達される「雨が振り始めた」という
 トリガ情報と特徴量として埋め込まれる「雨が降っている」という
 レベル情報である。天候の変化チェックは2分ごとに行う。
@@ -96,6 +97,7 @@ const initialState = {
   month: null,
   date: null,
   weather: null,
+  barometer: 0.5, 
   background: "",
   dayState: null,
   dayCycle: null,
@@ -122,19 +124,14 @@ function reducer(state, action) {
   switch (action.type) {
     case 'UPDATE_FIXED':
       const fixed = action.fixed;
-      // if (fixed?.disabled){
-      //   return {
 
-      //   }
-      // }
-
-      let weather = fixed?.weather;
+      let weather = fixed.weather; // nullも有効
       let dayCycle = state.dayCycle;
       let background = state.background;
-      const month = fixed?.month
-      const date = fixed?.date;
-      const hour = fixed?.hour;
-      const minute = fixed?.minute;
+      const month = fixed.month;
+      const date = fixed.date;
+      const hour = fixed.hour;
+      const minute = fixed.minute;
 
       // 日付が指定された場合、それが現在と異なっていたらdayCycleは更新
       if (!dayCycle ||
@@ -151,7 +148,7 @@ function reducer(state, action) {
         background = sky.getGradation(dayCycle, hour * 60 + minute)
       }
 
-      // fixedが変更されていない場合
+      // ここからコーディング。nullは有効
       return {
         ...state,
         month: month || state.month,
@@ -161,13 +158,7 @@ function reducer(state, action) {
         weather: weather,
         background: background,
         dayCycle: dayCycle,
-        fixed: {
-          weather: fixed?.weather,
-          month: month,
-          date: date,
-          hour: hour,
-          minute: minute,
-        },
+        fixed: fixed,
         run: !(fixed.weather || fixed.month)
       }
 
@@ -302,7 +293,8 @@ export default function EcosystemProvider({ children }) {
     const background = sky.getGradation(dayCycle, hour * 60 + minute);
 
     // 人工天候
-    const weather = ecosystem.WEATHER_MAP[month][Math.round(state.noise.getValue(now) * 7)];
+    const barometer = state.noise.getValue(now);
+    const weather = ecosystem.WEATHER_MAP[month][Math.round(barometer * 7)];
 
     return ({
       month: month,
@@ -311,7 +303,8 @@ export default function EcosystemProvider({ children }) {
       minute: minute,
       weather: weather,
       dayCycle: dayCycle,
-      background: background
+      background: background,
+      barometer: barometer,
     })
 
   }

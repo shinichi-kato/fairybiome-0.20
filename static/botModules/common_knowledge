@@ -20,7 +20,7 @@
 
 {:FAIRY} {:called} 妖精,フェアリー
 {:FAIRY} {:isA} {:PARTICIPANT} 
-{:FAIRY} {:describedAs}
+{:FAIRY} {:describedAs} 自然界の精霊的存在
 
 
 {:FOOD} {:called} 食べ物,フード,ご飯

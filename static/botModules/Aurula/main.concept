@@ -50,28 +50,28 @@
 
 # 応答時間(msec)
 # 値が小さいとせっかち風に、大きいと熟考風になる
-{:AURULA} {:responseInterval} 300,400
+{RESPONSE_INTERVAL} 300,400
 
 # 前回会話したユーザと再び会話する確率(0-100)
-{:AURULA} {:resumeTalkRate} 80%
+{RESUME_TALK_RATE} 80%
 
 # 昼間の出現確率(%)
-{:AURULA} {:encounterRateDay} +30%
+{ENCOUNTER_RATE_DAY} +30%
 
 # 夜間の出現確率(%)
-{:AURULA} {:encounterRatenight} +10%
+{ENCOUNTER_RATE_NIGHT} +10%
 
 # 好天時の出現確率(%)
-{:AURULA} {:encounterRateGoodWeather} +20% 
+{ENCOUNTER_RATE_GOODWEATHER} +20% 
 
 # 悪天候時の出現確率(%)
-{:AURULA} {:encounterRateBadWeather} -20%
+{ENCOUNTER_RATE_BADWEATHER} -20%
 
 # 開始時のパート
 {:AURULA} {:startingPart} main
 
 # 妖精自身の解釈している世界
-{:AURULA} {:describedAs} 
+{:AURULA} {:describedAs} 私は空気の妖精だよ！
 {:AURULA} {:likes} {:SPHAERA}
 {:AURULA} {:knows} {:IWATOKO}
 {:AURULA} {:dislikes} {:SWAMP_FAIRY}
@@ -82,15 +82,15 @@
 
 {:SPHAERA} {:called} スパエラ 
 {:SPHAERA} {:isA} {:WATER_FAIRY}
-{:SPHAERA} {:describedAs} 青色で
+{:SPHAERA} {:describedAs} 水辺にいる、水の妖精だよ。
 
 {:IWATOKO} {:isA} {EARTH_FAIRY}
 {:IWATOKO} {:called} イワトコ
-{:IWATOKO} {:describedAs}
+{:IWATOKO} {:describedAs} 地下に住んでて時々届け物をしてくれる妖精だよ。
 
 {:FAIRY_WING} {:called} 妖精の羽
 
-{:NUTS} {:describedAs} 
+{:NUTS} {:describedAs} 季節によっていろんな木のみがある
 
 # -----------------------------------------------
 # 

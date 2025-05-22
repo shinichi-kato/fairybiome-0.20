@@ -32,7 +32,7 @@ AuthProvider
 
 */
 
-import React, {useEffect, useReducer, useRef, createContext} from 'react';
+import React, { useEffect, useReducer, useRef, createContext } from 'react';
 import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
@@ -41,7 +41,8 @@ import {
   getAuth,
   signOut,
 } from 'firebase/auth';
-import {doc, onSnapshot, setDoc} from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { assignReadableId } from './readableId';
 
 import Landing from '../Landing';
 import SignDialog from './SignDialog';
@@ -68,10 +69,11 @@ const initialState = {
     backgroundColor: '#cccccc',
     avatarDir: '',
     avatar: 'peace.svg',
+    readableId: '',
   },
   authState: 'init',
   error: undefined,
-  
+
 };
 
 /**
@@ -81,7 +83,7 @@ const initialState = {
  * @return {Object} 次のstate
  */
 function reducer(state, action) {
-  console.log('authProvider', action, "error:",state.error);
+  console.log('authProvider', action, "error:", state.error);
   switch (action.type) {
     case 'connect': {
       const a = action.auth;
@@ -143,7 +145,7 @@ function reducer(state, action) {
       } else {
         return {
           ...state,
-          userProps: {...initialState.userProps},
+          userProps: { ...initialState.userProps },
           authState: 'UserSettingsDialog:open',
         };
       }
@@ -218,7 +220,7 @@ function reducer(state, action) {
  * @param {JSX.Element} このcontectを作用させるkra
  * @return {JSX.Element} provider
  */
-export default function AuthProvider({firebase, firestore, children}) {
+export default function AuthProvider({ firebase, firestore, children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const unsubscribeRef = useRef();
   const uid = state.user?.uid;
@@ -237,6 +239,9 @@ export default function AuthProvider({firebase, firestore, children}) {
 
       unsubscribeRef.current = onAuthStateChanged(auth, (user) => {
         console.log('onauthStateChanged', user);
+        if (user) {
+          assignReadableId(firestore, user);
+        }
         dispatch({
           type: 'authStateChange',
           user: user,
@@ -310,7 +315,7 @@ export default function AuthProvider({firebase, firestore, children}) {
    * @param {String} password password文字列
    */
   function handleSignUp(email, password) {
-    dispatch({type: 'SignDialog:waiting'});
+    dispatch({ type: 'SignDialog:waiting' });
     createUserWithEmailAndPassword(state.auth, email, password)
       // 成功した場合はonAuthStateChangedがトリガされる
       .then()
@@ -359,17 +364,17 @@ export default function AuthProvider({firebase, firestore, children}) {
    *
    */
   function handleSignOut() {
-    dispatch({type: 'SignDialog:waiting'});
+    dispatch({ type: 'SignDialog:waiting' });
     signOut(state.auth);
     // onAuthStateChangeがトリガされる
   }
 
   function handleOpenUserProps() {
-    dispatch({type: 'UserSettingsDialog:open'});
+    dispatch({ type: 'UserSettingsDialog:open' });
   }
 
   function handleClose() {
-    dispatch({type: 'close'});
+    dispatch({ type: 'close' });
   }
 
   // -----------------------------------------------------------
@@ -390,12 +395,12 @@ export default function AuthProvider({firebase, firestore, children}) {
    * @param {Object} data backgroundColor,avatarDirからなるobj
    */
   function handleChangeUserSettings(data) {
-    dispatch({type: 'UserSettingsDialog:waiting'});
+    dispatch({ type: 'UserSettingsDialog:waiting' });
 
-    updateProfile(state.auth.currentUser, {displayName: data.displayName})
+    updateProfile(state.auth.currentUser, { displayName: data.displayName })
       .then(() => {
         const docRef = doc(firestore, 'users', uid);
-        setDoc(docRef, {
+        updateDoc(docRef, {
           backgroundColor: data.backgroundColor,
           avatarDir: data.avatarDir,
           characterName: data.characterName,
@@ -404,11 +409,11 @@ export default function AuthProvider({firebase, firestore, children}) {
             // listernerでstateが書き換えられる
           })
           .catch((error) => {
-            dispatch({type: 'error', errorCode: error.message});
+            dispatch({ type: 'error', errorCode: error.message });
           });
       })
       .catch((error) => {
-        dispatch({type: 'error', errorCode: error.message});
+        dispatch({ type: 'error', errorCode: error.message });
       });
   }
 
@@ -417,10 +422,10 @@ export default function AuthProvider({firebase, firestore, children}) {
    * @param {*} avatar
    */
   function handleShapeShift(avatarDir) {
-    updateProfile(state.auth.currentUser, {avatarDir: avatarDir})
+    updateProfile(state.auth.currentUser, { avatarDir: avatarDir })
       .then(() => {
         const docRef = doc(firestore, 'users', uid);
-        setDoc(docRef, {
+        updateDoc(docRef, {
           backgroundColor: state.userProps.backgroundColor,
           avatarDir: avatarDir,
         })
@@ -428,11 +433,11 @@ export default function AuthProvider({firebase, firestore, children}) {
             // listernerでstateが書き換えられる
           })
           .catch((error) => {
-            dispatch({type: 'error', errorCode: error.message});
+            dispatch({ type: 'error', errorCode: error.message });
           });
       })
       .catch((error) => {
-        dispatch({type: 'error', errorCode: error.message});
+        dispatch({ type: 'error', errorCode: error.message });
       });
   }
 
@@ -446,6 +451,7 @@ export default function AuthProvider({firebase, firestore, children}) {
           backgroundColor: state.userProps.backgroundColor,
           characterName: state.user?.characterName,
           uid: state.user?.uid,
+          conceptName: state.user?.readableId,
         },
         uid: state.user?.uid,
         handleSignOut: handleSignOut,

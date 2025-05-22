@@ -68,5 +68,10 @@ describe('conceptStore', () => {
     console.log(res)
   })
 
+  it('updatedAt', async () => {
+    const res = await cs.updatedAt();
+    console.log(res)
+  })
+
 
 })
