@@ -28,6 +28,7 @@ cs.insert(`
 
 ### 検索
 
+
 */
 import Dexie from 'dexie';
 
@@ -35,7 +36,7 @@ export class MemoryStore {
   constructor(storeId = null) {
     this._db = new Dexie("WorkingMemoryStore");
     this._db.version(1).stores({
-      workMem: '++id,[storeId+key]',
+      workMem: '++id,storeId,key,value',
       metaData: '[storeId+key]'
     });
     this.storeId = storeId;
@@ -59,6 +60,17 @@ export class MemoryStore {
 
   }
 
+  async put(key, value, storeId = null) {
+    storeId ||= this.storeId;
+    let values = Array.isArray(value) ? value : [value];
+    const jobs = values.map(v => (this.store.put({
+      storeId: storeId,
+      key: key,
+      value: v
+    })))
+    return await Promise.all(jobs)
+  }
+
   async insert(items, storeId = null) {
     storeId = storeId !== null ? storeId : this.storeId;
     console.assert(storeId, "ConceptStore.insert(): storeIdが指定されていません");
@@ -67,11 +79,13 @@ export class MemoryStore {
     const lines = (typeof items === 'string' ? items.split('\n') : items)
       .map(line => line.trim())
       .filter(line => line.length > 0 && !line.startsWith('#')); // 空行コメント行除去
-    jobs = lines.map(line => {
-      const kv = keyValue(line);
-      this.store.add({
-        storeId: storeId,
-        ...kv,
+    lines.forEach(line => {
+      const kvs = keyValue(line);
+      kvs.forEach(kv => {
+        jobs.push(this.store.add({
+          storeId: storeId,
+          ...kv,
+        }))
       })
     });
 
@@ -86,8 +100,7 @@ export class MemoryStore {
 
   async toArray() {
     return await this.store
-      .where('[storeId+key]')
-      .between([this.storeId, Dexie.minKey], [this.storeId, Dexie.maxKey])
+      .where({storeId:this.storeId, key:key})
       .toArray();
   }
 
@@ -98,7 +111,7 @@ export class MemoryStore {
   }
 
   async retrieve(key) {
-    const extractedRecords = await this.store.where("[storeId+key]").equals([this.storeId, key]).toArray();
+    const extractedRecords = await this.store.where({storeId:this.storeId,key:key}).toArray();
     return getRandomElement(extractedRecords);
   }
 }
@@ -106,12 +119,15 @@ export class MemoryStore {
 function keyValue(line) {
   /*
   Parses a line like '{KEY} value1,value2,value3,...'
-  Returns { key: '{KEY}', values: [value1, value2, ...] }
+  Returns [{ key: '{KEY}', values: value1}, {key:'{KEY}', value2}, ...]
   */
   const regex = /({[^:][^}]+})\s+(.+)/;
   const regexItems = /"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|([^,]+)/g;
   const match = regex.exec(line);
-  if (!match) return { key: null, values: [] };
+  if (!match) {
+    console.log("not matched", line)
+     return [];
+  }
 
   const key = match[1];
   const valueStr = match[2];
@@ -122,11 +138,11 @@ function keyValue(line) {
     else if (itemMatch[2] !== undefined) values.push(itemMatch[2]);
     else if (itemMatch[3] !== undefined) values.push(itemMatch[3].trim());
   }
-  return { key, values };
+  return values.map(value => ({ key, value:value }));
 }
 
 function getRandomElement(records) {
-  if(records.length === 0) {
+  if (records.length === 0) {
     return undefined;
   }
   let randomIndex = Math.floor(Math.random() * records.length);

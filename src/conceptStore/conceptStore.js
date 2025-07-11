@@ -104,6 +104,7 @@ export class ConceptStore {
 
   }
 
+
   async insert(triples, storeId = null) {
     storeId = storeId !== null ? storeId : this.storeId;
     console.assert(storeId, "ConceptStore.insert(): storeIdが指定されていません");
@@ -209,6 +210,7 @@ export class ConceptStore {
       return await this.delete(match[1]);
     }
 
+    return line;
   }
 }
 

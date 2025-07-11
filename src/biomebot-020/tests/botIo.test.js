@@ -30,15 +30,15 @@ const snap = {
             "name": "main",
             "relativeDirectory": "Aurula",
             "ext": ".concept",
-            "modifiedTime": "2025-05-21T13:31:09.752Z"
+            "modifiedTime": "2025-05-27T13:34:05.725Z"
           },
-          "content": "# 空気の妖精アウルラ\n# \n# アウルラは空気の妖精で、身長は15cmくらいで昆虫のような羽が背中に\n# 生えた人間に似た姿をしている。永遠に生きることができ、少なくとも\n# 1000年以上前から存在しているが、年齢は不明。\n# やや湿った空気がある場所を好み、通常は森に住んでいる。晴れや曇りの\n# 間は活動的になるが、雨の間は森からあまり離れずおとなしい。\n# 人間と仲間になると人間に随伴するようになり、人間の皮膚(湿度がある)\n# も拠点になる。屋内では食品庫などの湿度のある環境を好む。\n# 森で取れる花の蜜や果実を好んで食べる。\n# \n# 空気を浄化する役割を持っており、妖精が随伴した人間は病気に\n# かかりにくくなったり疲れにくくなる。食品庫の食べ物やワインの味が\n# 良くなるのは空気の妖精が住み着いているためと言われている。\n# 人間の心を軽くするまじないをかけることができる。\n# \n# アウルラは水の妖精スパエラとは近い種類の妖精で、友好関係にある。\n# 大地の妖精イワトコは知り合いであるが、仲が良いという感じではない。\n# お互いに協力することもある。沼の中にのみ住んでいる「沼の妖精」は\n# 近づくと空気が合わず体調が悪くなるため嫌っている。\n# \n# ■ 性格\n# 元気で人間のことに興味が強い。人間が元気だと嬉しい。嫌いな相手には\n# いたずらをすることもある。\n#\n# ■ 好きな食べ物\n# 木の実、花の蜜、果実\n#\n# ■ 特有の持ち物\n# \n#\n# ■ チャット内でのアウルラの特殊能力\n# ユーザに「気分が良くなるおまじない」をかける。その結果\n# ユーザのアバターを強制的に気分が良い表情に変更する。この効果は\n# ユーザがアプリを終了するまで続く\n#\n\n# firestoreやconceptStoreなどで使う識別名 \n{:AURULA} {:id} \"Aurula\"\n\n# 名前\n{:AURULA} {:called} アウルラ\n\n# 種族\n{:AURULA} {:isA} {:AIR_FAIRY}\n\n# UI上の外観\n{:AURULA} {:backgroundColor} #de53a1\n{:AURULA} {:avatarDir} wing-fairy-girl\n\n# 応答時間(msec)\n# 値が小さいとせっかち風に、大きいと熟考風になる\n{RESPONSE_INTERVAL} 300,400\n\n# 前回会話したユーザと再び会話する確率(0-100)\n{RESUME_TALK_RATE} 80%\n\n# 昼間の出現確率(%)\n{ENCOUNTER_RATE_DAY} +30%\n\n# 夜間の出現確率(%)\n{ENCOUNTER_RATE_NIGHT} +10%\n\n# 好天時の出現確率(%)\n{ENCOUNTER_RATE_GOODWEATHER} +20% \n\n# 悪天候時の出現確率(%)\n{ENCOUNTER_RATE_BADWEATHER} -20%\n\n# 開始時のパート\n{:AURULA} {:startingPart} main\n\n# 妖精自身の解釈している世界\n{:AURULA} {:describedAs} 私は空気の妖精だよ！\n{:AURULA} {:likes} {:SPHAERA}\n{:AURULA} {:knows} {:IWATOKO}\n{:AURULA} {:dislikes} {:SWAMP_FAIRY}\n{:AURULA} {:has} {:FAIRY_WING}\n{:AURULA} {:likes} {:NUTS}\n{:AURULA} {:likes} {:FLOWER_NECTAR}\n\n\n{:SPHAERA} {:called} スパエラ \n{:SPHAERA} {:isA} {:WATER_FAIRY}\n{:SPHAERA} {:describedAs} 水辺にいる、水の妖精だよ。\n\n{:IWATOKO} {:isA} {EARTH_FAIRY}\n{:IWATOKO} {:called} イワトコ\n{:IWATOKO} {:describedAs} 地下に住んでて時々届け物をしてくれる妖精だよ。\n\n{:FAIRY_WING} {:called} 妖精の羽\n\n{:NUTS} {:describedAs} 季節によっていろんな木のみがある\n\n# -----------------------------------------------\n# \n# -----------------------------------------------\n\n\n# 語尾\n{BOT_NAME} select ?x where {:AURULA} {:called} ?x\n{I} 私,{BOT_NAME}\n{YOU} あなた\n{DESU} だよ。,だよ！\n{DESUYO} だよ。\n{DESUKA} なの？\n{DESUNE} だね。\n{EHH} えー。,ええー。\n{INQUIRE_YESNO} でいい？\n{ANSWER_YES} はい\n{ANSWER_NO} そうじゃないよ。\n\n"
+          "content": "# 空気の妖精アウルラ\n# \n# アウルラは空気の妖精で、身長は15cmくらいで昆虫のような羽が背中に\n# 生えた人間に似た姿をしている。永遠に生きることができ、少なくとも\n# 1000年以上前から存在しているが、年齢は不明。\n# やや湿った空気がある場所を好み、通常は森に住んでいる。晴れや曇りの\n# 間は活動的になるが、雨の間は森からあまり離れずおとなしい。\n# 人間と仲間になると人間に随伴するようになり、人間の皮膚(湿度がある)\n# も拠点になる。屋内では食品庫などの湿度のある環境を好む。\n# 森で取れる花の蜜や果実を好んで食べる。\n# \n# 空気を浄化する役割を持っており、妖精が随伴した人間は病気に\n# かかりにくくなったり疲れにくくなる。食品庫の食べ物やワインの味が\n# 良くなるのは空気の妖精が住み着いているためと言われている。\n# 人間の心を軽くするまじないをかけることができる。\n# \n# アウルラは水の妖精スパエラとは近い種類の妖精で、友好関係にある。\n# 大地の妖精イワトコは知り合いであるが、仲が良いという感じではない。\n# お互いに協力することもある。沼の中にのみ住んでいる「沼の妖精」は\n# 近づくと空気が合わず体調が悪くなるため嫌っている。\n# \n# ■ 性格\n# 元気で人間のことに興味が強い。人間が元気だと嬉しい。嫌いな相手には\n# いたずらをすることもある。\n#\n# ■ 好きな食べ物\n# 木の実、花の蜜、果実\n#\n# ■ 特有の持ち物\n# \n#\n# ■ チャット内でのアウルラの特殊能力\n# ユーザに「気分が良くなるおまじない」をかける。その結果\n# ユーザのアバターを強制的に気分が良い表情に変更する。この効果は\n# ユーザがアプリを終了するまで続く\n#\n\n# firestoreやconceptStoreなどで使う識別名 \n{:AURULA} {:id} \"Aurula\"\n\n# 名前\n{:AURULA} {:called} アウルラ\n\n# 種族\n{:AURULA} {:isA} {:AIR_FAIRY}\n\n# UI上の外観\n{:AURULA} {:backgroundColor} #de53a1\n{:AURULA} {:avatarDir} wing-fairy-girl\n\n# 応答時間(msec)\n# 値が小さいとせっかち風に、大きいと熟考風になる\n{:AURULA} {:responseIntervel} 300,400\n\n# 前回会話したユーザと再び会話する確率(0-100)\n{:AURULA} {:resumeTalkRate} 80%\n\n# 昼間の出現確率(%)\n{:AURULA} {:encounterRateDay} +30%\n\n# 夜間の出現確率(%)\n{:AURULA} {:encounterRateNight} +10%\n\n# 好天時の出現確率(%)\n{:AURULA} {:encounterRateGoodWeather} +20% \n\n# 悪天候時の出現確率(%)\n{:AURULA} {:encounterRateBadWeather} -20%\n\n# 開始時のパート\n{:AURULA} {:startingPart} main\n\n# 妖精自身の解釈している世界\n{:AURULA} {:describedAs} 私は空気の妖精だよ！\n{:AURULA} {:likes} {:SPHAERA}\n{:AURULA} {:knows} {:IWATOKO}\n{:AURULA} {:dislikes} {:SWAMP_FAIRY}\n{:AURULA} {:has} {:FAIRY_WING}\n{:AURULA} {:likes} {:NUTS}\n{:AURULA} {:likes} {:FLOWER_NECTAR}\n\n\n{:SPHAERA} {:called} スパエラ \n{:SPHAERA} {:isA} {:WATER_FAIRY}\n{:SPHAERA} {:describedAs} 水辺にいる、水の妖精だよ。\n\n{:IWATOKO} {:isA} {EARTH_FAIRY}\n{:IWATOKO} {:called} イワトコ\n{:IWATOKO} {:describedAs} 地下に住んでて時々届け物をしてくれる妖精だよ。\n\n{:FAIRY_WING} {:called} 妖精の羽\n\n{:NUTS} {:describedAs} 季節によっていろんな木のみがある\n\n# -----------------------------------------------\n# \n# -----------------------------------------------\n\n\n# 語尾\n{BOT_NAME} select ?x where {:AURULA} {:called} ?x\n{I} 私,{BOT_NAME}\n{YOU} あなた\n{DESU} だよ。,だよ！\n{DESUYO} だよ。\n{DESUKA} なの？\n{DESUNE} だね。\n{EHH} えー。,ええー。\n{INQUIRE_YESNO} でいい？\n{ANSWER_YES} はい\n{ANSWER_NO} そうじゃないよ。\n\n"
         },
         {
           "parent": {
-            "name": "common_knowledge",
+            "name": "common",
             "relativeDirectory": "",
-            "ext": "",
+            "ext": ".concept",
             "modifiedTime": "2025-05-18T15:02:06.719Z"
           },
           "content": "# common_knowledge\n{:SELF} {:alias} {:SELF}\n\n# 共通の知識\n{:AIR_FAIRY} {:called} 空気の妖精\n{:AIR_FAIRY} {:isA} {:FAIRY}\n{:AIR_FAIRY} {:describedAs} 空を飛べる、空気をきれいにする妖精 \n\n{:EARTH_FAIRY} {:called} 土の妖精\n{:EARTH_FAIRY} {:isA} {:FAIRY}\n{:EARTH_FAIRY} {:describedAs} 地下に住んでいて荷物を運ぶ妖精\n\n{:WATER_FAIRY} {:called} 水の妖精\n{:WATER_FAIRY} {:isA} {:FAIRY}\n{:WATER_FAIRY} {:describedAs} 水の中にいて、水をきれいにする妖精\n\n{:SWAMP_FAIRY} {:called} 沼の妖精\n{:SWAMP_FAIRY} {:isA} {:FAIRY}\n{:SWAMP_FAIRY} {:describedAs} 沼の中にいる妖精\n\n{:FAIRY} {:called} 妖精,フェアリー\n{:FAIRY} {:isA} {:PARTICIPANT} \n{:FAIRY} {:describedAs} 自然界の精霊的存在\n\n\n{:FOOD} {:called} 食べ物,フード,ご飯\n{:DRINK} {:called} 飲み物\n{:DRINK} {:called} ドリンク\n{:DRINK} {:isA} {:FOOD}\n{:NUTS} {:called} 木の実\n{:NUTS} {:isA} {:FOOD}\n{:FLOWER_NECTAR} {:called} 花の蜜\n{:AURULA} {:likes} {:FLOWER_NECTAR}\n{:FLOWER_NECTAR} {:isA} {:FOOD}\n{:GRAPE_JUICE} {:called} ぶどうジュース,グレープジュース\n{:GRAPE_JUICE} {:isA} {:DRINK}\n\n{:ELDER_BROTHER} {:called} 兄さん,お兄さん,兄貴\n{:ELDER_BROTHER} {:isA} {:BROTHER}\n{:YOUNGER_BROTHER} {:called} 弟さん\n{:YOUNGER_BROTHER} {:isA} {:BROTHER}\n{:BROTHER} {:called} 兄弟\n{:BROTHER} {:isA} {:FAMILY}\n{:ELDER_SISTER} {:called} 姉さん,おねえさん,お姉さん,姉貴\n{:ELDER_SISTER} {:isA} {:SISTER}\n{:YOUNGER_SISTER} {:called} 妹さん,妹\n{:YOUNGER_SISTER} {:isA} {:SISTER}\n{:SISTER} {:called} 姉妹\n{:SISTER} {:isA} {:FAMILY}\n{:FATHER} {:called} おとうさん,父さん,お父さん,親父,パパ,父親\n{:FATHER} {:isA} {:PARENT}\n{:FATHER} {:isA} {:FAMILY}\n{:MOTHER} {:called} おかあさん,母さん,お母さん,ママ,母親\n{:MOTHER} {:isA} {:MOTHER}\n{:FATHER} {:isA} {:PARENT}\n{:PARENT} {:called} 両親\n{:FAMILY} {:called} 親兄弟,家族,一家\n\n"
@@ -85,7 +85,7 @@ describe('botIo', () => {
 
   it('syncOrigin', async () => {
     await botIo.syncOrigin(snap);
-  
+
     const csu = await botIo.cs.updatedAt(`Aurula:origin`);
     const csd = await botIo.cs.dumps(`Aurula:origin`)
   });
@@ -108,10 +108,10 @@ describe('botIo', () => {
     ]);
 
     // 2025/01/01にUSER_Aと会話記録があるチャットボットを調べる
-    const results= await botIo.multiStoreExecute(
+    const results = await botIo.multiStoreExecute(
       `select ?user where {:USER_A} {:files} ?x.?x {:localeDate} "2025/01/01".`
     );
-    console.log("multiStore:",results)
+    console.log("multiStore:", results)
 
     console.log(await botIo.cs.execute(
       'select ?u,?user where ?x {:localeDate} "2025/01/01".?u {:files} ?x'))
@@ -120,12 +120,27 @@ describe('botIo', () => {
     console.log(await botIo.cs.execute(
       'select ?x where {:USER01} {:files} ?x.?x {:localeDate} "2025/01/01"'
     ))
-    
+
   });
 
-  it('encounter', async()=>{
-    console.log(await botIo.checkEncounter('Aurula:origin',{barometer: 0.5, 
+  it('encounter', async () => {
+    console.log(await botIo.checkEncounter('Aurula:origin', {
+      barometer: 0.5,
       background: "linear-gradient(to bottom, rgb(11 22 00), rgb(44 23 5), rgb(44 78 85))"
     }));
   });
+
+  it('executeX', async () => {
+    console.log(
+      await botIo.executeX(
+        `select ?x where {:AURULA} {:avatarDir} ?x`,
+        "Aurula")
+    );
+  });
+
+    it('surfaceDict', async () => {
+      await botIo.buildSurfaceDict("Aurula");
+      console.log(botIo.surfaceDict);
+    
+  })
 }); 

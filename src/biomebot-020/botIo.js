@@ -27,6 +27,7 @@ export class BotIO {
   constructor() {
     this.cs = new ConceptStore();
     this.ms = new MemoryStore();
+    this.surfaceDict = {};
   }
 
   /**
@@ -99,8 +100,16 @@ export class BotIO {
   }
 
   async multiStoreExecute(sentence, storeIds) {
-    // ConceptStore上のすべてのstoreIdについてsentenceで検索した結果を
-    // 報告
+    /* ConceptStore上のすべてのstoreId、またはstoreIdsで指定したstoreについて
+    sentenceを実行し、storeIdとあわせて結果を報告
+
+    ・全storeIdを混ぜて検索してしまうと、該当するレコードが重複して生じる
+    可能性が大で、さらにそのleft joinされた大量の結果が返ってきてしまう。
+    また各storeで優先順位をつけたいが、それが不可能になってしまう。
+
+    ・selectに対しては複数のstoreを混ぜて実行できるが、insertでは
+    一つのstoreに限定が必要。各storeに対して実行であればOK
+    */
 
     storeIds = storeIds || await this.cs.getAllStoreIds();
     const results = [];
@@ -114,24 +123,71 @@ export class BotIO {
   }
 
 
-  async execute(sentence, botId){
-    // <botId>:gained、　(獲得した知識)
-    // <botId>:origin、　(graphqlから供給した知識)
-    // "" (共通の知識)という３つのstoreを検索対象にして
-    // multiStoreExecuteを実行する。
-    
-    return await this.multiStoreExecute(sentence, [`${botId}:gained`,`${botId}:origin`,""]);
+  async execute(sentence, botId) {
+    /* ３つのstore <botId>:gained, <botId>:origin, "" に対して
+    multiStoreExecuteを実行する。
+    */
+
+    return await this.multiStoreExecute(sentence, [`${botId}:gained`, `${botId}:origin`, ""]);
   }
 
-  async retrieve(sentence, botId){
+  async executeX(sentence, botId) {
+    /* /* ３つのstore <botId>:gained, <botId>:origin, "" に対して
+    multiStoreExecuteを実行する。得られた結果のうちすべての?xを集めて
+    そのうちランダムに選んだ一つを返す。
+    この値がthis.msに含まれる場合展開して返す。
+    */
+    const results = await this.execute(sentence, botId);
+    const values = [];
+    for (let result of results) {
+      if ('?x' in result) {
+        values.push(result['?x']);
+      }
+    }
+    if (results.length === 0) {
+      return "";
+    }
+
+    const value = values[Math.floor(Math.random() * results.length)];
+    const regexp = /^\{[^:}][^\}]+\}/;
+    if (regexp.exec(value)) {
+      return await this.retrieve(value, botId);
+    }
+    return value;
+  }
+
+  async retrieve(key, botId) {
     // this.ms.retrieveを検索する。
-    // まず <botId>:active でretrieve()し、結果がなかったら <botId>:origin
-    // 更に結果がなかったら "" というフォールバックを行う。
+    // まず storeIdを<botId>:gained にしてretrieve()し、結果がなかったら 
+    // <botId>:origin 更に結果がなかったら "" というフォールバックを行う。
     // 
     // 検索結果に{}が含まれていたら再帰的にretrieveを行い、
-    // 検索結果が{:から始まっていたらtripleとみなしてthis.execute を実行する
-    // を実行する。
+    // 検索結果が conceptStoreのselect文であればthis.executeX を実行する
 
+    const record = (async (key, botId) => {
+      this.ms.setStoreId(`${botId}:gained`);
+      let record = this.ms.retrieve(key);
+      if (record) return record;
+
+      this.ms.setStoreId(`${botId}:origin`);
+      record = this.ms.retrieve(key);
+      if (record) return record;
+
+      this.ms.setStoreId("");
+      record = this.ms.retrieve(key);
+      return record;
+    })(key, botId);
+
+    const regexp = /^select/i;
+    if (regexp.match(record.startsWith("select"))) {
+      return await this.executeX(record, botId);
+    }
+    return record;
+  }
+
+  async put(botId, key, value) {
+    // botId:gainedにkey,valueのペアを追加する
+    return await this.ms.put(`${botId}:gained`, key, value);
   }
 
   /**
@@ -146,13 +202,15 @@ export class BotIO {
     // `linear-gradient(to bottom, rgb(11 22 00), rgb(44 23 5), rgb(44 78 85))`
     // という文字列。このうち２つ目のrgb値を代表とする。
     const { barometer, background } = ecoState;
-    this.ms.setStoreId(storeId);
+    this.cs.setStoreId(storeId);
+    let _botId = storeId.split(':')[0];
+    const botConcept = `{:${_botId.toUpperCase()}}`;
 
     // 各種出現率を取得
-    const erDay = parseRate(await this.ms.retrieve('{ENCOUNTER_RATE_DAY}'));
-    const erNight = parseRate(await this.ms.retrieve('{ENCOUNTER_RATE_NIGHT}'));
-    const erGoodWeather = parseRate(await this.ms.retrieve('{ENCOUNTER_RATE_GOODWEATHER}'));
-    const erBadWeather = parseRate(await this.ms.retrieve('{ENCOUNTER_RATE_BADWEATHER}'));
+    const erDay = parseRate(await this.executeX(`select ?x where ${botConcept} {:encounterRateDay} ?x`, _botId));
+    const erNight = parseRate(await this.executeX(`select ?x where ${botConcept} {:encounterRateNight} ?x`, _botId));
+    const erGoodWeather = parseRate(await this.executeX(`select ?x where ${botConcept} {:encounterRateGoodWeather} ?x`, _botId));
+    const erBadWeather = parseRate(await this.executeX(`select ?x where ${botConcept} {:encounterRateBadWeather} ?x`, _botId));
 
     // 背景色から明度(0=夜, 1=昼)を計算
     function getBrightnessFromGradient(bg) {
@@ -173,16 +231,60 @@ export class BotIO {
     // 昼夜・天候で補間
     const encounterRateDayNight = erNight + (erDay - erNight) * brightness;
     const encounterRateWeather = erBadWeather + (erGoodWeather - erBadWeather) * barometer;
-    console.log(erNight,erDay,erBadWeather,erGoodWeather)
-    console.log(encounterRateDayNight,encounterRateWeather)
+    console.log(erNight, erDay, erBadWeather, erGoodWeather)
+    console.log(encounterRateDayNight, encounterRateWeather)
     // ロール判定
 
-    return (Math.random() < (encounterRateDayNight+encounterRateWeather));
+    return (Math.random() < (encounterRateDayNight + encounterRateWeather));
   }
 
-  storeIdToBotId(storeId){
+  storeIdToBotId(storeId) {
     const names = storeId.split(':')
     return names[0]
+  }
+
+  async buildSurfaceDict(botId) {
+    /*
+    this.csの select ?surface where ?concept {:called} ?surface、
+    this.msに含まれる全てのkey:valueについて、?surfaceやvalueをタグに変換する
+    辞書を生成し、this.surfaceDictに保持する。
+    Aurula:gained, Aurula:origin, "" のようにstoreIdをまたいで処理し、
+    同じsufaceについて優先順位はgained > origin > ""とする。
+
+    */
+    const that = this;
+    async function getConcSurf(storeId) {
+      that.cs.setStoreId(storeId);
+      const records = await that.cs.select("?conc, ?surf")
+        .where("?conc {:called} ?surf")
+        .toArray();
+      records.forEach(record => {
+        that.surfaceDict[record["?surf"]] = record["?conc"];
+      });
+    }
+
+    async function getMemSurf(storeId){
+      const records = await that.ms.store
+        .where({storeId:storeId})
+        .toArray();
+
+      console.log("storeID",storeId, "memSurf",records)
+      records.forEach(record=>{
+        that.surfaceDict[record.value]=record.key;
+      })
+    };
+
+
+    const jobs = [
+      getMemSurf(""),
+      getMemSurf(`${botId}:origin`),
+      getMemSurf(`${botId}:gained`),
+      getConcSurf(""),
+      getConcSurf(`${botId}:origin`),
+      getConcSurf(`${botId}:gained`)
+    ];
+    return await Promise.all(jobs);
+
   }
 }
 

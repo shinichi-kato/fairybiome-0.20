@@ -254,7 +254,7 @@ export default function AuthProvider({ firebase, firestore, children }) {
         unsubscribeRef.current();
       }
     };
-  }, [firebase]);
+  }, [firebase, firestore]);
 
   // ----------------------------------------------------------
   //  ユーザ追加情報の購読

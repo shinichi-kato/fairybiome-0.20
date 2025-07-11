@@ -50,22 +50,22 @@
 
 # 応答時間(msec)
 # 値が小さいとせっかち風に、大きいと熟考風になる
-{RESPONSE_INTERVAL} 300,400
+{:AURULA} {:responseIntervel} 300,400
 
 # 前回会話したユーザと再び会話する確率(0-100)
-{RESUME_TALK_RATE} 80%
+{:AURULA} {:resumeTalkRate} 80%
 
 # 昼間の出現確率(%)
-{ENCOUNTER_RATE_DAY} +30%
+{:AURULA} {:encounterRateDay} +30%
 
 # 夜間の出現確率(%)
-{ENCOUNTER_RATE_NIGHT} +10%
+{:AURULA} {:encounterRateNight} +10%
 
 # 好天時の出現確率(%)
-{ENCOUNTER_RATE_GOODWEATHER} +20% 
+{:AURULA} {:encounterRateGoodWeather} +20% 
 
 # 悪天候時の出現確率(%)
-{ENCOUNTER_RATE_BADWEATHER} -20%
+{:AURULA} {:encounterRateBadWeather} -20%
 
 # 開始時のパート
 {:AURULA} {:startingPart} main

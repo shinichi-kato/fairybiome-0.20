@@ -184,8 +184,9 @@ export default function BiomebotProvider({ firebase, firestore, summon, initialP
 
           shuffle(currentBots);
           for (const currentBot of currentBots) {
-            botIo.ms.setStoreId(currentBot.storeId);
-            const resumeRate = await botIo.ms.retrieve("{RESUME_TALK_RATE}");
+            const _botId = currentBot.storeId.split(':')[0];
+            const botConcept= `{:${_botId.toUpperCase()}}`;
+            const resumeRate = await botIo.ms.executeX(`${botConcept} {:resumeTalkRate} ?x`,_botId);
             if (Math.random() < resumeRate) return currentBot.storeId;
           }
 

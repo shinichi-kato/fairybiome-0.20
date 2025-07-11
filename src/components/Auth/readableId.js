@@ -1,6 +1,6 @@
-import { doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, runTransaction } from 'firebase/firestore';
 
-async function assignReadableId(firestore, user) {
+export async function assignReadableId(firestore, user) {
   const userRef = doc(firestore, 'users', user.uid);
   const docSnap = await getDoc(userRef);
 

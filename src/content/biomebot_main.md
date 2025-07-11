@@ -1,7 +1,7 @@
 biomebot main
 =================================================
 
-main ではチャットボットに共通するパラメータの定義および概念の操作を行う。
+main ではチャットボットに共通するパラメータの定義および概念のCRUD操作を行う。
 概念の記述には簡略化したrdf記法を用い、問い合わせには簡易化したsparqlを用いる。
 
 ## シンボル
@@ -95,6 +95,7 @@ Biomebot Mainパートは以下に示すような概念的知識の操作を行�
 {:SPHAERA} {:likes} {:FAILY_WATER}
 {:SPHAERA} {:knows} {:IWATOKO}
 {:SPHAERA} {:dislikes} {:SWAMP_FAILY}
+{:SPHAERA} {:evokesEmotion} {:relax}
 ```
 
 # 概念に対する問い合わせ
