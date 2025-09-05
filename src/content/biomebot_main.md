@@ -39,7 +39,7 @@ main ではチャットボットに共通するパラメータの定義および
 {USER_NAME} select ?x where {user} {:called} ?x
 ```
 
-## mainの記法
+## conceptの記法
 ### 概念記憶の記法(簡略化したRDF)
 
 概念記憶とは「apple is a fruit」ような言及をtripleで表現したものである。これをRDFでは
@@ -69,10 +69,24 @@ main ではsparql類似の記法で概念記憶を検索できる。
 
 
 ## mainの機能
-* 各種パラメータの定義
+### 起動停止の制御
+main.conceptはすべてのボットについてbiomebot起動時に自動的に起動され、
+その内容は起動停止の最低限の情報のみにしておく。
+そこに下記のように発言に{SYSTEM_START_MODULES}タグを含めることで、同じディレクトリの
+すべてのパートが起動される。
+```
+{:STARTUP_PATTERN1} {:listen} "user スパエラさんいる？ => {BOT_IS_ALIVE}
+{:STARTUP_PATTERN1} {:isMatch} "bot いるよー"
+{:STARTUP_PATTERN1} {:isNotMatch} {:STARTUP_PATTERN2}
+{:STARTUP_PATTERN2} {:if} {ROLL_FOR_ENCOUNTER}
+{:STARTUP_PATTERN2} {:then} "bot はーい{SYSTEM_START_MODULES}{SYSTEM_LOGIN}"
+```
+また{SYSTEM_STOP_MODULES}を記述することでmain.concept以外のパートを停止できる。
+
+### 各種パラメータの定義
 Biomebot Mainはチャットボットの各種パラメータを定義し、他のpartに対して共通の情報を提供する。
 
-Biomebot Mainパートは以下に示すような概念的知識の操作を行う。
+### conceptパートは以下に示すような概念的知識の操作を行う。
 * 概念の獲得:ユーザについて、未知の単語についてなどの知識を新たに獲得する。
 * 概念への問い合わせ: ユーザから聞かれた場合、botの知っている知識を答える。
 * 概念の更新: ユーザとの会話の中で知識の修正が必要になった場合対応する。

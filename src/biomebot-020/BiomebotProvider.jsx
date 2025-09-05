@@ -1,31 +1,72 @@
 /*
 BiomebotProvider
 ===========================
-複数のパートが競争的に動作することで一つのキャラクタを形成する
-チャットボット
+複数のパートが競争的に動作することで一つのキャラクタを形成するチャットボット
+
+## パートの管理と制御
+一つのチャットボットは複数のパートからなり、conceptとepisodeという二種類の
+workerで構成される。conceptはセマンティックtripleの簡易版をバックボーンとした
+DBで、episodeは類似度行列型の簡易な機械学習モデルである。
+
+| name   | part             | status  | 
+|--------|------------------|---------|
+| Aurula | main.concept     | active  |
+| Aurula | aurula.concept   | active  |
+| Aurula | greeting.episode | idle    |
+
+main.conceptはチャットボットの不在・在室管理および基本パラメータの定義をしており、
+すべてのチャットボットのmain.conceptはbotProvider起動時に必ず起動される。そこから
+ユーザの呼びかけなどでチャットボットが起動することになった場合同じチャットボットの
+全パートが起動される。
+この起動状況は管理画面で確認することができ、statusは以下のようになる。
+active: 活性化されていて返答しやすい
+idle: 活性化していない
+dead: 機動しているはずだが応答がない
+starting: 起動コマンドを受け付けた
+なし: 起動していない
+
+### パートの制御
+管理画面からパートに対して以下のコマンドを送ることができる
+| command    | 効果                    |
+|------------|-------------------------|
+| start      | workerを生成            |
+| terminate  | workerを破壊            |
+| activate   | 活性化し次の返答を行う  |
+| deactivate | idle化                  |
+| status     | 現在の状態をレポート    |
 
 
-## 登場するチャットボットの決定
-0. 全チャットボットのgraphql上のデータは'origin'と呼び、最新版をすべてConceptStore,MemoryStore,
-SequenceStore上にアップロードする。学習などにより獲得したデータは'gained'と呼び、ConceptStore,
-MemoryStore,SequenceStoreとfirestoreで同期する。
-ConceptStore上にはチャットボットの出現傾向を定義するパラメータが格納される。
+## botのデータ格納状況とデータ表現
+botのタイプにはconceptとepisodeの二つがある。
 
-1. チャットボットはユーザと会話を始めると当日のログがConceptStoreに残る。
-同じ日に再びアプリを起動した場合は{:resumeTalkRate}の確率でこのチャットボットが
-再び姿を見せるようになる。
+### conceptタイプ
+概念記憶を司るパートでConceptStoreにtripleで表現された概念知識を格納する。
+conceptStoreの内容はgraphqlから共有されたoriginと、会話で獲得したgainedに大別される。
 
-2. 今日会話した妖精がいない場合はconceptStore上からランダムで妖精を選び、時間帯や天候ごとの
-出現確率ロールに成功したら出現する。失敗したら成功するまで妖精の選択を繰り返す。
 
-### 起動チャットボットの指定
-現れるチャットボットを固定することができる。
-`summon="aurula"|"iwatoko"|"sphaera"`で姿を見せるチャットボットを
-指定でき、`initialPart=パート名`により起動する妖精の最初のパートを
-設定することができる。指定しなかった場合は妖精の設定したパートが
-ランダムに選ばれる。
 
-## データ入出力
+
+## biomebotProvider起動時のシークエンス
+1. graphql上の全bot,firestore上の全botについて下記情報をdexieJsのbiomebot DBに登録。
+biomebot : {
+  [botName+partName],
+  lastStartedAt,
+}
+partNameがmainである全てのデータについてgqまたはfsからconceptStoreへのアップデートを行う
+
+2. 全てのmainをconstructしてmodulesRefに登録し起動コマンドを送る。
+moduleRef.current[`${botName}.${partName}`]=worker()
+
+3. lastStartedAtが本日中の場合{:resumeTalkRate}ロールに成功したらこのbotNameに属する
+全てのpartについてデータのアップデートとstartを行う。
+
+
+4. 3に失敗したら全妖精の出現確率ロールで出現判定かつ最も高いスコアを出した
+中からランダムに選んだ一体がactivateされる。すべての妖精が出現ロールに失敗したら最も高いスコアを
+出した中からランダムに選んだ一体がstartされる。
+
+
+## データのsync
 チャットボットのデータはConceptStoreとMemoryStoreの２つに格納され、それぞれ
 origin: graphqlにあるデータ
 gained: あとから獲得したデータ
@@ -38,10 +79,10 @@ gainedのデータはgraphqlにはなくconceptStore,MemoryStoreの内容がfire
 graphql上のデータは以下の形式で格納される。
 botModules
 ├ Aurula
-│    ├ main  # originのConceptStore,originのMemoryStore
-│    ├ greeting
+│    ├ main.concept
+│    ├ greeting.episode
 ︙    ︙
-│    └ story
+│    └ story.episode
 └ common_knowledge
 
 firestore上では
@@ -50,17 +91,20 @@ chatbots collection
 └ Aurula document
   ├ catalogueデータ
     └ modules collection
-        ├ main document
-        │   ├ concept 会話によって獲得したConceptStoreデータ
-        │   └ memory 会話によって獲得したMemoryStoreデータ
-
-        ├ greeting document
+        ├ main.concept document
+        │   ├ lastDeployedAt: 最後に起動されたtimestamp
+        │   ├ conceptStore 会話によって獲得したConceptStoreデータ
+        │   └ memoryStore 会話によって獲得したMemoryStoreデータ
         ︙
-        └ story
+        ├ greeting.episode document
+        │   ├ sequenceStore 会話によって獲得したSequenceStoreデータ
+        │   └ memoryStore 会話によって獲得したMemoryStoreデータ
+        ︙
+        └ story.episode
 
 とする。firestore上にはoriginである{:COMMON}も置かない。
 
-■ graphql - conceptStore, memoryStore間の同期(origin)
+■ graphql - conceptStore, memoryStore, sequenceStore間の同期(origin)
 conceptStore上ではinsertを行うとupdatedAtが変更される。この値とgraphqlのmodifiedTimeを
 比較し、graphql側が新しい場合conceptStore, memoryStoreにアップロードする。
 
@@ -141,6 +185,7 @@ export default function BiomebotProvider({ firebase, firestore, summon, initialP
   const eco = useContext(EcosystemContext);
   const [state, dispatch] = useReducer(reducer, initialState);
   const snap = useStaticQuery(biomebotQuery);
+  const modules = useRef({});
 
   // ---------------------------------------------------
   // broadcast channelの初期化
@@ -160,7 +205,7 @@ export default function BiomebotProvider({ firebase, firestore, summon, initialP
   }, [state.channel]);
 
   // ---------------------------------------------------
-  // データのsyncとチャットボットの起動
+  // 起動シークエンス
   // 
 
   useEffect(() => {

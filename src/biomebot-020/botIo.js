@@ -13,8 +13,10 @@ origin (graphqlのコピー)
 gained (学習により獲得した知識)
 という三層のデータを利用する。
 
-またチャットボットはIdごとに一つしか存在せず、同じIdの
-チャットボットが複数のユーザと並行して会話する。
+またチャットボットのデータはfs上で最新版が維持され、
+それをローカルにコピーして利用する。つまりIdごとに
+一つしか存在せず、同じIdのチャットボットが複数の
+ユーザと並行して会話する。
 
 */
 
@@ -28,6 +30,7 @@ export class BotIO {
     this.cs = new ConceptStore();
     this.ms = new MemoryStore();
     this.surfaceDict = {};
+
   }
 
   /**

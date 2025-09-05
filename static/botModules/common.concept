@@ -35,9 +35,9 @@
 {:GRAPE_JUICE} {:called} ぶどうジュース,グレープジュース
 {:GRAPE_JUICE} {:isA} {:DRINK}
 
-{:ELDER_BROTHER} {:called} 兄さん,お兄さん,兄貴
+{:ELDER_BROTHER} {:called} 兄さん,お兄さん,兄貴,おにいさん,アニキ
 {:ELDER_BROTHER} {:isA} {:BROTHER}
-{:YOUNGER_BROTHER} {:called} 弟さん
+{:YOUNGER_BROTHER} {:called} 弟さん,弟,おとうと
 {:YOUNGER_BROTHER} {:isA} {:BROTHER}
 {:BROTHER} {:called} 兄弟
 {:BROTHER} {:isA} {:FAMILY}
@@ -51,8 +51,8 @@
 {:FATHER} {:isA} {:PARENT}
 {:FATHER} {:isA} {:FAMILY}
 {:MOTHER} {:called} おかあさん,母さん,お母さん,ママ,母親
-{:MOTHER} {:isA} {:MOTHER}
-{:FATHER} {:isA} {:PARENT}
+{:MOTHER} {:isA} {:FAMILY}
+{:MOTHER} {:isA} {:PARENT}
 {:PARENT} {:called} 両親
 {:FAMILY} {:called} 親兄弟,家族,一家
 
