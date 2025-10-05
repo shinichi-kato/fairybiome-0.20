@@ -9,17 +9,16 @@
   "dependencies": {
     "@emotion/react": "11.14.0",
     "@emotion/server": "11.11.0",
-    "@emotion/styled": "11.14.0",
-    "@mui/icons-material": "^7.0.1",
-    "@mui/material": "^7.0.1",
-    "dexie": "^4.0.11",
+    "@emotion/styled": "11.14.1",
+    "@mui/icons-material": "^7.3.2",
+    "@mui/material": "^7.3.2",
+    "dexie": "^4.2.0",
     "firebase": "^11.6.0",
-    "gatsby": "5.14.1",
-    "gatsby-plugin-manifest": "^5.14.0",
-    "gatsby-plugin-react-helmet": "6.14.0",
-    "gatsby-source-filesystem": "^5.14.0",
-    "gatsby-transformer-plaintext": "^2.0.0",
-    "mathjs": "^14.4.0",
+    "gatsby": "5.15.0",
+    "gatsby-plugin-manifest": "^5.15.0",
+    "gatsby-plugin-react-helmet": "6.15.0",
+    "gatsby-source-filesystem": "^5.15.0",
+    "mathjs": "^14.8.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-helmet": "6.1.0",
@@ -33,8 +32,8 @@
     "post-update": "echo \"codesandbox preview only, need an update\" && pnpm update --latest"
   },
   "devDependencies": {
-    "fake-indexeddb": "^6.0.0",
-    "vitest": "^3.0.9",
+    "fake-indexeddb": "^6.2.2",
+    "vitest": "^3.2.4",
     "worker-loader": "^3.0.8"
   }
 }

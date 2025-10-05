@@ -35,10 +35,20 @@ module.exports = {
       resolve: `gatsby-source-filesystem`,
       options: {
         name: `botModules`,
-        path: `${__dirname}/static/botModules/`,
+        path: `${__dirname}/content/botModules/`,
       },
     },
-    `gatsby-transformer-plaintext`,
+    {
+      resolve: `gatsby-source-filesystem`,
+      options: {
+        name: `documents`,
+        path: `${__dirname}/content/documents/`,
+      },
+    },
+    `biomebot-transformer-concept`,
+    `biomebot-transformer-config`,
+
+
   ],
   siteMetadata: {
     title: '妖精バイオーム',

@@ -1,0 +1,13 @@
+{
+  "name": "biomebot-transformer-config",
+  "version": "1.0.0",
+  "main": "gatsby-node.js",
+  "description": "Transformer plugin for fairy bot configuration files.",
+  "author": "加藤 真一",
+  "license": "MIT",
+  "keywords": ["gatsby", "transformer", "fairy", "bot", "config"],
+  "peerDependencies": {
+    "gatsby": "^5.0.0",
+    "gatsby-source-filesystem": "^5.0.0"
+  }
+}

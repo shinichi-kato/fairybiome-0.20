@@ -25,7 +25,7 @@ dead: 機動しているはずだが応答がない
 starting: 起動コマンドを受け付けた
 なし: 起動していない
 
-### パートの制御
+### パートへのコマンド送信
 管理画面からパートに対して以下のコマンドを送ることができる
 | command    | 効果                    |
 |------------|-------------------------|
@@ -34,6 +34,8 @@ starting: 起動コマンドを受け付けた
 | activate   | 活性化し次の返答を行う  |
 | deactivate | idle化                  |
 | status     | 現在の状態をレポート    |
+
+### パートからのメッセージ受信
 
 
 ## botのデータ格納状況とデータ表現
@@ -80,10 +82,12 @@ graphql上のデータは以下の形式で格納される。
 botModules
 ├ Aurula
 │    ├ main.concept
-│    ├ greeting.episode
+│    ├ greeting.sequence
 ︙    ︙
-│    └ story.episode
-└ common_knowledge
+│    └ story.e
+└ common
+    ├ common_knowledge.concept
+    └ episode.
 
 firestore上では
 
@@ -133,18 +137,6 @@ function shuffle(array) {
 
 const biomebotQuery = graphql`
 query MyQuery {
-  allPlainText {
-    nodes {
-      parent {
-        ... on File {
-          name
-          relativeDirectory
-          ext
-        }
-      }
-      content
-    }
-  }
   allFile(filter: {sourceInstanceName: {in: "userAvatar"}}) {
     nodes {
       sourceInstanceName

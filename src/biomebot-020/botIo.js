@@ -3,20 +3,63 @@ BotIO
 ================================
 チャットボットのデータ入出力
 
-チャットボットはbotId(Aurulaなど)で識別され、
-ConceptStore (概念辞書)
-MemoryStore (変数記憶)
-SequenceStore (エピソード記憶)
-の３種類の記憶方式を利用する。またそれぞれについて
-common (graphqlのコピーでチャットボット共通の知識)
-origin (graphqlのコピー)
-gained (学習により獲得した知識)
-という三層のデータを利用する。
 
-またチャットボットのデータはfs上で最新版が維持され、
-それをローカルにコピーして利用する。つまりIdごとに
-一つしか存在せず、同じIdのチャットボットが複数の
-ユーザと並行して会話する。
+チャットボットはbotId(Aurulaなど)で識別され、そのデータは複数の辞書
+ファイルで構成される。データの形式は概念記憶を司る*.concept および
+エピソード記憶を保持する *.sequence の二種類で、それぞれ複数存在して
+良い。チャットボットのデータはgrapqlをoriginとしfirestore上で最新版が
+維持され、それをブラウザにコピーして利用する。
+つまり同じbotIdのチャットボットが複数のユーザと並行して会話する。
+
+## データの格納形式
+### graphql
+graphqlにはチャットボットがユーザとの会話で獲得したのではなく、最初
+から知っている知識を格納する。これは会話によって変化せず、管理者による
+更新が直ちに反映されることが望ましいためfirestoreを経由せずブラウザ
+上に直接コピーされる。graphql上では以下のようなディレクトリ構成で
+ファイルを格納する。
+
+static
+└ BotModules
+    ├ {botId}
+    │   ├ *.concept
+    │   └ *.sequence
+    └ common
+         ├ *.concept
+         └ *.sequence
+
+概念記憶はgraphql上では*.conceptというファイル形式で格納する。内容は
+簡易的な triple である。*.sequenceはチャットボットの会話ログをベースに
+した形式である。common下のファイルは全チャットボットに共通のファイル
+である。
+graphql上の全てのデータは起動時にブラウザ上のindexedDBにdeployする。
+
+### indexedDB
+ブラウザ上にはgraphql上のファイルをConceptStore, MemoryStore, 
+SequenceStoreに展開して利用する。また会話中に獲得した知識もこれらの
+storeに格納され、アプリ起動時にはfirestoreに同期される。
+各store上では下記のように区別する。
+
+| 名前   | 内容                                           |
+|--------|------------------------------------------------|
+| common | graphql由来でチャットボット共通のデータ        |
+| origin | graphql由来でチャットボット固有のデータ        |
+| gained | 学習により獲得したチャットボット固有のデータ   |
+
+### firestore
+firestore上にはチャットボットの知識のうち、学習で獲得した内容のみを
+以下のフォルダ構成で格納する。ファイル形式はgraphql互換で、これは
+firestore上のファイルをgraphqlに統合しやすくするためである。
+
+collection Bots
+  └ doc {botId}
+      └ collection Modules
+            ├ *.concept
+            ├ *.sequence
+            └ *.memory
+
+doc {botId}にはModulesに格納した全ファイルのタイムスタンプを保持し、
+ローカルへのダウンロードが必要かを判断できるようにする。
 
 */
 
