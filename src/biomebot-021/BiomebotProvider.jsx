@@ -60,6 +60,7 @@ import { useStaticQuery, graphql } from 'gatsby';
 import Biomebot from './biomebot';
 
 export const BiomebotContext = createContext();
+const isBrowser = typeof window !== 'undefined';
 
 const biomebotQuery = graphql`
 query MyQuery {
@@ -79,21 +80,19 @@ query MyQuery {
     }
   }
   allBiomebotConfig {
-    edges {
-      node {
-        badWeatherAppearanceAdjustment
-        nighttimeAppearanceAdjustment
-        goodWeatherAppearanceAdjustment
-        daytimeAppearanceAdjustment
-        spontaneousAppearanceRate
-        parent {
-          ... on File {
-            name
-            relativeDirectory
-          }
+    nodes {
+      badWeatherAppearanceAdjustment
+      nighttimeAppearanceAdjustment
+      goodWeatherAppearanceAdjustment
+      daytimeAppearanceAdjustment
+      spontaneousAppearanceRate
+      parent {
+        ... on File {
+          name
+          relativeDirectory
         }
-        summonAppearanceRate
       }
+      summonAppearanceRate
     }
   }
 }
@@ -106,43 +105,60 @@ query MyQuery {
  */
 function splitSnaps(snap) {
   let configs = {}
-  for (let node of snap.data.allBiomebotConfig.nodes) {
+  console.log("snap=",snap)
+  for (let node of snap.allBiomebotConfig.nodes) {
     const p = node.parent;
     const botId = p.relativeDirectory;
-    configs[botId] = {...node};
+    configs[botId] = { ...node };
   }
 
   let concepts = {}
-  for (let node of snap.data.allConceptEntry){
+  for (let node of snap.allConceptEntry.nodes) {
     const p = node.parent;
     const botId = p.relativeDirectory;
-    if(!(botId in concepts)){
+    if (!(botId in concepts)) {
       concepts[botId] = [];
     }
-    concepts[botId].push({moduleName: p.name, triples:[...node.triples]});
+    concepts[botId].push({ moduleName: p.name, triples: [...node.triples] });
   }
 
-  return [configs,concepts];
+  return [configs, concepts];
 }
 
 const initialState = {
   botIds: [],
-  status: {},
-  channel: {},
+  botStatus: {},
+  workerStatus: {},
+  channels: {},
 }
 
 function reducer(state, action) {
   switch (action.type) {
     case 'init': {
+      console.log("action",action)
       return {
         ...state,
         botIds: Object.keys(action.configs),
+        channels: { ...action.channels },
+        botStatus: {...action.botStatus},
       }
+    }
+
+    case 'getBiomebotStatus': {
+      return {
+        ...state,
+        botStatus: action.botStatus,
+        workerStatus: action.workerStatus
+      }
+    }
+
+    default: {
+      throw new Error(`BiomebotProvider:invalid action ${action}`)
     }
   }
 }
 
-export default function BiomebotProvider() {
+export default function BiomebotProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const botPool = useRef({});
   const snap = useStaticQuery(biomebotQuery);
@@ -152,49 +168,68 @@ export default function BiomebotProvider() {
   //
 
   useEffect(() => {
-    if (state.botIds.length === 0) {
-      const [configs,concepts] = splitSnaps(snap);
-      for (let botId in configs) {
-        botPool.current[botId] = new Biomebot(configs[botId],concepts[botId]);
+    if (!isBrowser) return;
+    if (state.botIds.length > 0) return;
+
+    const [configs, concepts] = splitSnaps(snap);
+    const bots = botPool.current; // snapshot
+    const channels = {};
+    const cleanups = [];
+    const botStatus = {};
+
+    for (const botId of Object.keys(configs)) {
+      bots[botId] = new Biomebot(botId, configs[botId], concepts[botId]);
+      botStatus[botId] = bots[botId].getStatus();
+
+      cleanups.push(() => {
+        try {
+          const d = bots[botId]?.destroy?.();
+          if (d && typeof d.then === 'function') d.catch(() => { });
+        } catch { }
+      });
+
+      if ('BroadcastChannel' in window) {
+        const ch = new BroadcastChannel(`Biomebot-${botId}`);
+        channels[botId] = ch;
+        cleanups.push(() => { try { ch.close(); } catch { } });
       }
-      dispatch({ type: 'init', configs: configs });
     }
-  }, [state.botIds]);
 
-  function handleGetStatus() {
-    let status = {}
-    for (let botId in state.botModules) {
-      status[botId] = botPool.current[botId].getStatus();
-    }
-    
-    dispatch({ type: 'getStatus', status: status });
-    return status;
-  }
+    dispatch({ type: 'init', configs, channels,botStatus });
 
-  // ---------------------------------------------------
-  // broadcast channelの初期化
-  //
-
-  useEffect(() => {
-    let ch;
-    if (!state.channel) {
-      ch = new BroadcastChannel('biomebot');
-      dispatch({ type: 'setChannel', channel: ch });
-    }
     return () => {
-      if (ch) {
-        ch.close();
+      for (const fn of cleanups) {
+        try { fn(); } catch { }
       }
     };
-  }, [state.channel]);
+  }, [state.botIds.length, snap]);
+
+  /**
+   * biomebotとそのworkersのステータスを収集
+   * 
+   */
+  async function handleGetStatus() {
+
+    // biomebotインスタンス（workerではない)のステータス問い合わせ
+    let botStatus = {}
+    for (let botId of state.botIds) {
+      botStatus[botId] = botPool.current[botId].getStatus();
+    }
+    console.log("botStatus",botStatus)
+
+    dispatch({ type: 'getBiomebotStatus', botStatus: botStatus });
+
+    // workerのステータス問い合わせ
+  }
 
   return (
     <BiomebotContext.Provider
       value={{
-        getStatus: handleGetStatus()
+        botStatus: state.botStatus,
+        getStatus: handleGetStatus
       }}
     >
-      {children}
+      {state.botIds ? children : "loading..."}
     </BiomebotContext.Provider>
   )
 }

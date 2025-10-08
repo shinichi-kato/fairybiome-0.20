@@ -100,7 +100,8 @@ export class MemoryStore {
 
   async toArray() {
     return await this.store
-      .where({storeId:this.storeId, key:key})
+      .where({storeId:this.storeId})
+      // .where({storeId:this.storeId, key:key})
       .toArray();
   }
 

@@ -52,20 +52,21 @@ biomebot.terminate()でbotの同期が行われ、完了したらworkerが破棄
 import { ConceptStore } from '../conceptStore/conceptStore';
 import { MemoryStore } from '../memoryStore/memoryStore';
 
-export class Biomebot{
+export default class Biomebot{
   
-  constructor(config,concepts)
+  constructor(botId, config,concepts)
   {
     this.config = {...config};
     this.concepts = [...concepts];
-    this.botId = null;
+    this.botId = botId;
     this.workerPool = {};
     this.conceptStore = new ConceptStore();
     this.memoryStore = new MemoryStore();
-
+    this.channel = new BroadcastChannel(`Biomebot-${botId}`)
+    this.getStatus = this.getStatus.bind(this);
   }
 
-  destroy(){
+  async destroy(){
     // workerの停止
     // データの書き戻し？
   }
@@ -74,7 +75,9 @@ export class Biomebot{
    * @returns {botId, modules: [{moduleName:string, status:string}]}}
    */
   getStatus(){
-    return {botId: this.botId, modules: []};
+    const report = [`botId: ${this.botId}`,`modules: ${Object.keys(this.workerPool)}`];
+    console.log("report",report)
+    return report;
   }
 
 
