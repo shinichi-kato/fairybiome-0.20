@@ -99,7 +99,6 @@ const initialState = {
   weather: null,
   barometer: 0.5, 
   background: "",
-  dayState: null,
   dayCycle: null,
   fixed: {
     weather: null,
@@ -173,13 +172,6 @@ function reducer(state, action) {
         ...state,
         channel: action.channel
       }
-
-    case 'SET_DAY_STATE': {
-      return {
-        ...state,
-        dayState: action.dayState,
-      };
-    }
 
     case 'RUN': {
       return {
@@ -360,7 +352,7 @@ export default function EcosystemProvider({ children }) {
     <EcosystemContext.Provider
       value={{
         weather: state.weather,
-        dayState: state.dayState,
+        barometer: state.barometer,
         openDialog: handleOpenDialog,
         run: () => dispatch({ type: 'RUN' }),
         stop: () => dispatch({ type: 'STOP' }),

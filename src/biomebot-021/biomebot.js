@@ -64,6 +64,7 @@ export default class Biomebot{
     this.memoryStore = new MemoryStore();
     this.channel = new BroadcastChannel(`Biomebot-${botId}`)
     this.getStatus = this.getStatus.bind(this);
+
   }
 
   async destroy(){
@@ -75,9 +76,17 @@ export default class Biomebot{
    * @returns {botId, modules: [{moduleName:string, status:string}]}}
    */
   getStatus(){
-    const report = [`botId: ${this.botId}`,`modules: ${Object.keys(this.workerPool)}`];
+    const report = {
+      botId: this.botId,
+      workerNames: Object.keys(this.workerPool),
+    };
     console.log("report",report)
     return report;
+  }
+
+  start(){
+    // workerの生成
+    
   }
 
 

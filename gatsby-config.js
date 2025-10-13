@@ -47,7 +47,7 @@ module.exports = {
     },
     `biomebot-transformer-concept`,
     `biomebot-transformer-config`,
-
+    `biomebot-transformer-dialog`,
 
   ],
   siteMetadata: {
@@ -64,6 +64,8 @@ module.exports = {
       '#9e88aa', // purple
     ],
     balloonBackgroundAlpha: 0.8,
+    // チャットボットの生存確認シグナルの周期,秒
+    heartbeatInterval: 120,
 
   },
 };

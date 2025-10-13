@@ -1,12 +1,16 @@
-exports.onCreateNode = async ({ node, actions, loadNodeContent }) => {
+exports.onCreateNode = async ({ node, actions, loadNodeContent, createNodeId }) => {
   const { createNode, createParentChildLink } = actions;
+
   // .conceptファイルのみ処理
   if (node.extension !== "concept") {
     return;
   }
 
   const content = await loadNodeContent(node);
-  const [description, triplesRaw] = content.split(/^---$/m);
+  const parts = content.split(/^---$/m);
+
+  const description = parts[0].trim();
+  const triplesRaw = parts.length > 1 ? parts[1] : "";
 
   const triples = [];
   const lines = triplesRaw.split("\n");
@@ -20,14 +24,14 @@ exports.onCreateNode = async ({ node, actions, loadNodeContent }) => {
   }
 
   const conceptNode = {
-    id: `${node.id} >>> ConceptEntry`,
+    id: createNodeId(`${node.id}-concept`),
     parent: node.id,
     children: [],
     internal: {
-      type: "ConceptEntry",
+      type: "ConceptStore",
       contentDigest: node.internal.contentDigest,
     },
-    description: description.trim(),
+    description,
     triples,
   };
 

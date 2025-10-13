@@ -1,8 +1,8 @@
 {
-  "name": "biomebot-transformer-config",
+  "name": "biomebot-transformer-dialog",
   "version": "1.0.0",
   "main": "gatsby-node.js",
-  "description": "Transformer plugin for fairy bot log-type dictionary files.",
+  "description": "Transformer plugin for .dialogueue to expose structured metadata via GraphQL.",
   "author": "加藤 真一",
   "license": "MIT",
   "keywords": ["gatsby", "transformer", "fairy", "bot", "config"],
