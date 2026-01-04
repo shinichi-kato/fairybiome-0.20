@@ -1,73 +1,48 @@
 /*
 Biomebot-021
 ============
+一つのチャットボットを構成するworkerの管理
 
-「心のパート」モデルを用いた小規模コミュニティ向けチャットボット
+botIdで指定された一つのチャットボットはConceptStore,MemoryStore,DialogStoreに
+格納されたデータを利用して会話を実行する。
+チャットボットは複数のworkerが競争的に動作して発言を生成しており、
+各workerに入力を分配し、返答を収集するのにbotIdごとのBroadcastChannelを
+利用する。
+Biomebotクラスでは以下の処理を行う。
 
-## チャットボットの会話のメカニズム
-人の心は一見複雑で矛盾も含んだ挙動をする。この挙動はより単純な意図を持った
-「パート」が複数競争的・共同的に働くことにより現れると考えるのが心のパート
-理論である。それを模してこのチャットボットでは単純なチャットボットを複数
-動作させ、それらの相互作用を通して発言内容を決める。
+| 項目                 | 内容
+|----------------------|--------------------------------------------
+| workerプロセス制御   | workerチャンネルを介し起動・停止などを管理
+| 入力情報の分配       | 外部入力を全workerにbroadcast
+| 内言の統合と外部出力 | workerからの返答をまとめて外部に出力
 
-
-
-### １対１の会話
-1:1の会話では、場の人数(=2)が特徴量の一つになる。
-またチャットボットは場の無言時間が長いと発話しようとする。これはタイマーで
-回っている会話のループが1回目でNGだった場合2回目に入るが、ループ回数ごとに
-しきい値が低下するという挙動で表現する。
-
-### 多対多の会話
-他対多の会話では場の人数が特徴量の一つとなり、現在の人数との差に応じて
-スコアが与えられる。またチャットボットのタイマー周期が人数に応じて長くなる
-が、ばらつきも大きくする。これは考えるべきことが多くなることを模倣した
-挙動である。
-
-また
-* 会話ログ中での会話相手が今の相手と同じかどうか
-* 相手がユーザがチャットボットか
-も特徴量の一つになる。
-
-## チャットボットのライフサイクル
-一つのBiomebotインスタンスは一つのチャットボットを構成する。
-Biomebotはチャットボットを構成するworkerのインスタンスを管理する。
-workerを動作させるソースとなるデータはgraphqlで供給され、
-ローカルではconceptStore(概念記憶),sequenceStore(エピソード記憶),memoryStore
-(ワーキングメモリ)に格納される。それらのうち会話を通して更新、獲得された
-情報はfirestoreに記憶され、ローカルと同期する。
-
-biomebotインスタンス生成時にgraphqlからmainのみが読み込まれる。
-
-biomebot.summon()でbotが出現するかどうかが判定され、判定になった場合は
-残りの全データの同期が行われてworkerインスタンスが生成される。
-
-biomebot.run()で会話が可能になる。
-
-biomebot.terminate()でbotの同期が行われ、完了したらworkerが破棄される。
 */
 
 // 一つのチャットボットを構成するworkersの管理
 
 import { ConceptStore } from '../conceptStore/conceptStore';
 import { MemoryStore } from '../memoryStore/memoryStore';
+import { DialogStore } from '../dialogStore/dialogStore';
 
-export default class Biomebot{
-  
-  constructor(botId, config,concepts)
-  {
-    this.config = {...config};
-    this.concepts = [...concepts];
+import ConceptWorker from './worker/concept.worker';
+
+export default class Biomebot {
+
+  constructor(botId, config, concepts, dialogs) {
+    this.config = { ...config };
+    this.concepts = { ...concepts };
+    this.dialogs = { ...dialogs };
     this.botId = botId;
     this.workerPool = {};
-    this.conceptStore = new ConceptStore();
-    this.memoryStore = new MemoryStore();
+    this.conceptStore = new ConceptStore(botId);
+    this.dialogStore = new DialogStore(botId);
+    this.memoryStore = new MemoryStore(botId);
     this.channel = new BroadcastChannel(`Biomebot-${botId}`)
     this.getStatus = this.getStatus.bind(this);
 
   }
 
-  async destroy(){
+  async destroy() {
     // workerの停止
     // データの書き戻し？
   }
@@ -75,19 +50,32 @@ export default class Biomebot{
   /**
    * @returns {botId, modules: [{moduleName:string, status:string}]}}
    */
-  getStatus(){
+  getStatus() {
     const report = {
       botId: this.botId,
       workerNames: Object.keys(this.workerPool),
     };
-    console.log("report",report)
+    console.log("report", report)
     return report;
   }
 
-  start(){
+  start() {
     // workerの生成
-    
+    for(let moduleName in this.concepts){
+      if(!(moduleName in this.workerPool)){
+        // データの転送
+        // ワーカーの生成
+        const worker = new ConceptWorker();
+        worker.onmessage = function (event){
+          const action = event.data;
+          // 生成と削除
+        }
+        worker.postMessage({type:'init',config:this.config,moduleName:moduleName});
+        this.workerPool[moduleName]= worker;
+
+      }
+    }
+
   }
-
-
 }
+

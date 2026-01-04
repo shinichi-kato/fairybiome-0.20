@@ -80,7 +80,7 @@ import React, {
 } from 'react';
 
 import Box from '@mui/material/Box';
-import useInterval from '../../useInterval';
+import useInterval from '../../hooks/useInterval';
 import NoiseGenerator from './noise';
 
 import { liveQuery } from 'dexie';

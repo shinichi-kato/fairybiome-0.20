@@ -19,7 +19,7 @@ exports.onCreateNode = async ({ node, actions, loadNodeContent, createNodeId }) 
     const match = line.match(/^\{:(.+?)\}\s+\{:(.+?)\}\s+(.+)$/);
     if (match) {
       const [, subject, predicate, object] = match;
-      triples.push({ subject, predicate, object });
+      triples.push({ s:subject, p:predicate, o:object });
     }
   }
 
