@@ -49,6 +49,7 @@
     "**/*.backup",
     "**/**.backup",
     "_legacy",
-    ".next"
+    ".next",
+    "scripts"
   ]
 }
