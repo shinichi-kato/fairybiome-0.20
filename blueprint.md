@@ -1,8 +1,12 @@
 
 FairyBiome
 ==========
+
+
 ## 概要
-```
+フロントエンドはreact-nextjs-
+
+```mermaid
 sequenceDiagram
 participant Graphql@{ "type" : "database" }
 participant Firestore@{ "type" : "database" }

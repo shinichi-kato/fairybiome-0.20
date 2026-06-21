@@ -16,8 +16,8 @@
     "setup:content": "node scripts/uploadContentToFirestore.js"
   },
   "dependencies": {
-    "dexie": "^4.2.0",
-    "firebase": "^11.6.0",
+    "dexie": "^4.4.4",
+    "firebase": "^11.10.0",
     "firebase-admin": "^12.0.0",
     "lucide-react": "^0.408.0",
     "mathjs": "^14.8.1",

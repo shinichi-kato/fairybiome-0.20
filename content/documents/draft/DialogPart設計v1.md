@@ -1,17 +1,24 @@
 DialogPart - ログ型辞書を使ったパートチャットボットカーネルクラス
 ======================================
-このクラスはアプリ起動時にgraphql経由の辞書ソースとfirestoreを与えてインスタンス化
-する。アプリ初期化の中でsync()を実行することでdb上のデータを最新にし、learn()で
-db.cacheを更新する。
-reply(message)は外部からの入力を受取り、{score, innerText, sourceId}からなる返答を返す。
-render(sourceId)はsourceIdで示されるテキストを日本語に戻して出力する。
+* このクラスはアプリ起動時にgraphql経由の辞書ソースとfirestoreを与えてインスタンス化
+  する。アプリ初期化の中でsync()を実行することでdb上のデータを最新にし、learn()で
+  db.cacheを更新する。reply(message)は外部からの入力を受取り、{score, innerText, sourceId}からなる返答を返す。
+  render(sourceId)はsourceIdで示されるテキストを日本語に戻して出力する。
 
-このクラスはworkerを利用して並列動作させることもできる。その場合は
-listener内でreply()を呼び、戻り値をpostMessageで戻す、render()を呼び戻り値をpostMessageで
-返すという処理を行う。
+* このクラスはworkerを利用して並列動作させることもできる。その場合は
+  listener内でreply()を呼び、戻り値をpostMessageで戻す、render()を呼び戻り値をpostMessageで返すという処理を行う。
 
 
-## 1. 辞書と格納形式
+## 1. 会話ログを利用した学習
+### userとbotの対話
+登場人物がbot自身とuser一人の場合、ユーザの発言がログ中n行目のユーザ発言と類似していればn+1行目のbot発言を返す、という単純な仕組みを考えることができる。
+一方で実際にはそれ以外の登場人物も想定される。例えば bot, user, user1の三者で会話していたら、user発言 X に対してbotの返答 Yb またはuser1の返答 Y1 が実行される可能性がある。このログを使った場合、チャットボットは X に対してYbまたはY1を返すことができる。ただしY1は伝聞のていに変換したほうが自然である場合も多いと考えられる。
+
+| speaker | replyer |
+|---------|---------|
+| user    | bot     |
+
+## 2. 辞書の格納形式
 * 辞書ソース(source)
   - botId, moduleName,isLearnedで識別。他は特徴量。
   - オリジナルのデータはgraphql経由で提供される。
