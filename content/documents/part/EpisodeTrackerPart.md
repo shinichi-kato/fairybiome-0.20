@@ -74,7 +74,7 @@ EpisodeTrackerPart は、予め用意したログやユーザとの会話ログ�
 | emoCyc | [sin, cos] | Plutchik の輪に基づく感情表現 |
 | facingCyc | [sin, cos] | 0=向き合う、π=背を向ける |
 | pressureNorm | [sqrt(p), sqrt(1-p)] | 気圧・天候を正規化 |
-| locationOnehot | one-hot | 屋内/屋外などカテゴリ別 |
+| locationOnehot | one-hot | 'private' / 'public' |
 
 - emoは喜び=0,信頼=1/4π,恐れ=1/2π,驚き=3/4π,悲しみ=π,嫌悪=5/4π,怒り=3/2π,期待=7/4πとし、それらの[sin,cos]を特徴量とする
 
@@ -100,7 +100,7 @@ score(x_1, x_2) = Σ_i k_i ⟨x_{1,i}, x_{2,i}⟩
 - `k_i` は固定値でも構わないが、ログが増えたときに再調整できるようにする。
 
 ## テキストに対する前処理
-- テキストのなかでタグ辞書this.globalTagsにヒットしたものは予めタグ化する。
+- テキストのなかでタグ辞書this.WordTagsにヒットしたものは予めタグ化する。
 
 ## Attention 方式の文脈追跡
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { EpisodeStorage } from './EpisodeStorage';
 
-describe('EpisodeStorage.readGlobalTags', () => {
+describe('EpisodeStorage.readWordTags', () => {
   let originalFetch;
 
   beforeEach(() => {
@@ -13,7 +13,7 @@ describe('EpisodeStorage.readGlobalTags', () => {
     global.fetch = originalFetch;
   });
 
-  it('loads global tags and stores them in globalTags.dict sorted by surface length', async () => {
+  it('loads global tags and stores them in WordTags.dict sorted by surface length', async () => {
     const sample = [
       {
         surfaces: ['兄', 'お兄さん', '兄貴'],
@@ -31,12 +31,12 @@ describe('EpisodeStorage.readGlobalTags', () => {
     });
 
     const storage = new EpisodeStorage('botA');
-    await storage.readGlobalTags('tags/global.json');
+    await storage.readWordTags('tags/global.json');
 
-    expect(Object.keys(storage.globalTags.dict)).toEqual(['お兄さん', '兄貴', '兄弟', '兄', '姉妹']);
-    expect(storage.globalTags.dict['お兄さん'].index).toBe(0);
-    expect(storage.globalTags.dict['兄'].index).toBe(3);
-    expect(storage.globalTags.dict['兄弟'].embedding['兄弟']).toBeCloseTo(0.588, 3);
+    expect(Object.keys(storage.WordTags.dict)).toEqual(['お兄さん', '兄貴', '兄弟', '姉妹', '兄']);
+    expect(storage.WordTags.dict['お兄さん'].index).toBe(0);
+    expect(storage.WordTags.dict['兄'].index).toBe(4);
+    expect(storage.WordTags.dict['兄弟'].embedding['兄弟']).toBeCloseTo(0.526, 3);
   });
 
   it('ignores duplicate surfaces and preserves valid tags', async () => {
@@ -57,31 +57,55 @@ describe('EpisodeStorage.readGlobalTags', () => {
     });
 
     const storage = new EpisodeStorage('botA');
-    await storage.readGlobalTags('tags/global.json');
+    await storage.readWordTags('tags/global.json');
 
-    expect(Object.keys(storage.globalTags.dict)).toEqual(['お兄さん', '兄貴', '兄', '姉妹']);
-    expect(storage.globalTags.dict['兄']).toBeDefined();
-    expect(storage.globalTags.dict['姉妹']).toBeDefined();
+    expect(Object.keys(storage.WordTags.dict)).toEqual(['お兄さん', '兄貴', '姉妹', '兄']);
+    expect(storage.WordTags.dict['兄']).toBeDefined();
+    expect(storage.WordTags.dict['姉妹']).toBeDefined();
   });
 
-  it('does not populate globalTags.dict when fetch fails', async () => {
+  it('does not populate WordTags.dict when fetch fails', async () => {
     global.fetch.mockRejectedValue(new Error('Network error'));
 
     const storage = new EpisodeStorage('botA');
-    await storage.readGlobalTags('tags/global.json');
+    await storage.readWordTags('tags/global.json');
 
-    expect(storage.globalTags.dict).toEqual({});
+    expect(storage.WordTags.dict).toEqual({});
   });
 
-  it('does not populate globalTags.dict when response is invalid JSON', async () => {
+  it('does not populate WordTags.dict when response is invalid JSON', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
       json: async () => { throw new Error('invalid json'); },
     });
 
     const storage = new EpisodeStorage('botA');
-    await storage.readGlobalTags('tags/global.json');
+    await storage.readWordTags('tags/global.json');
 
-    expect(storage.globalTags.dict).toEqual({});
+    expect(storage.WordTags.dict).toEqual({});
+  });
+
+  it('can reuse addWordTags for tag arrays and preserves existing entries', () => {
+    const storage = new EpisodeStorage('botA');
+    storage.addWordTags([
+      {
+        surfaces: ['兄', 'お兄さん'],
+        embedding: { '兄': 1.0 }
+      }
+    ], 'inline');
+
+    expect(Object.keys(storage.WordTags.dict)).toEqual(['お兄さん', '兄']);
+    expect(storage.WordTags.dict['お兄さん'].index).toBe(0);
+    expect(storage.WordTags.dict['兄'].embedding['兄']).toBeCloseTo(1.0, 5);
+
+    storage.addWordTags([
+      {
+        surfaces: ['兄', '姉妹'],
+        embedding: { '姉妹': 1.0 }
+      }
+    ], 'inline2');
+
+    expect(Object.keys(storage.WordTags.dict)).toEqual(['お兄さん', '兄', '姉妹']);
+    expect(storage.WordTags.dict['姉妹'].index).toBe(2);
   });
 });

@@ -38,7 +38,7 @@ function deploy(botName,firestore);
 title: EpisodeStorage.deploy()
 ---
 sequenceDiagram
-    static ->> EpisodeStorage:readGlobalTags()
+    static ->> EpisodeStorage:readWordTags()
     static ->> EpisodeStorage:readStatic()
     firestore ->> EpisodeStorage: readFirestore()
     EpisodeStorage->>EpisodeStorage: build()
@@ -52,15 +52,16 @@ NEXT_PUBLIC_STATIC_FILES = [
 ]; 
 ```
 * 引数で得たfirestoreはthis.firestoreにコピーする。
-* deploy()はNEXT_PUBLIC_STATIC_FILES中の tags/global.jsonを探し、存在したらreadGlobalTags()を行う。
+* deploy()はNEXT_PUBLIC_STATIC_FILES中の tags/global.jsonを探し、存在したらreadWordTags()を行う。
 deploy()はNEXT_PUBLIC_STATIC_FILES中の bots/{botName}/*.episode.json を探し、
 *をpartNameとして各partNameに対してreadStatic(botName,partName), readFirestore(botName,partName)を実行する。いずれかのタイムスタンプが記憶したものより新しい場合buildを行う。
 
-### readGlobalTags
+### readWordTags
 ```javascript
 /**
+ * @param {string} path - タグファイルのパス
  */
-function readGlobalTags();
+function readWordTags(path);
 ```
 tags/*.jsonに以下の形式で記載したタグ情報を取得。
 ```json
@@ -76,7 +77,7 @@ tags/*.jsonに以下の形式で記載したタグ情報を取得。
 ]
 ```
 以下を生成。
-this.globalTags.dict: 順序付き辞書
+this.WordTags.dict: 順序付き辞書
 - key=surfafce (surfacesの各要素)
 - dictはsurface文字列の長い順にソート
 - value={index:number, embedding:dict}。indexはsurfaceごとにインクリメント
@@ -97,14 +98,23 @@ this.globalTags.dict: 順序付き辞書
  * @param {string} botName - チャットボットの型式
  * @param {string} partName - パート名
  */
-function readStatic(botName,partName);
+async function readStatic(botName,partName);
 ```
 readStaticは該当したjsonをfetchしてthis.staticSourceにそのまま格納する。形式は以下の通り。
 ```json
 {
   "title": "挨拶",
   "author":"skato",
-  "tags": [],
+  "tags": [
+    {
+      "surfaces": ["しまりすさん", "シマリスさん"],
+      "embedding": {"{user}": 1.0}
+    },
+    {
+      "surfaces": ["アウルラ"],
+      "embedding": {"{bot}": 1.0}
+    },
+  ],
   "factor": {
     "activity": 0.6,
     "precision": 0.4
@@ -120,6 +130,7 @@ readStaticは該当したjsonをfetchしてthis.staticSourceにそのまま格�
   ]
 }
 ```
+tag中に"{user}","{bot}"にembeddingされるタグを記載しておく。"{user}","{bot}"はそれぞれこの会話ログが記録されたときのユーザとチャットボットの名前を示す。
 
 またthis.staticSource.timestampはfetchしたファイルのtimestampで上書きする。
 
@@ -129,7 +140,7 @@ readStaticは該当したjsonをfetchしてthis.staticSourceにそのまま格�
  * @param {string} botName - チャットボットの型式
  * @param {string} partName - パート名
  */
-function readFirestore(botName,partName);
+async function readFirestore(botName,partName);
 ```
 firestoreの階層構造は以下を想定。
 ```
@@ -143,31 +154,90 @@ firestore
 * firestore上に該当文書がない場合無視。
 
 ## build
+```javascript
+/**
+ * @param {string} botName - チャットボットの型式
+ * @param {string} partName - パート名
+ */
+function build(botName,partName);
+```
 staticSourceとfirestoreSourceのタイムスタンプのうちいずれかが
-db.cache.timestampよりも新しい場合、以下の手順で類似度行列を生成。
+db.cache.timestampよりも新しい場合、両方のデータを用いて以下の手順で類似度行列を生成。
+
+注：2027/6/21現在、タイムスタンプ比較は未実装（dexiejsへの保存が未実装のため）
 
 ### 1. validate
 * static, firestoreともにepisode.jsonの書式は同じで、
 以下のvalidateを行い、エラーがあれば報告する。
-{
-    "role": "user" | "bot" | "eco",
-    "text": {string},
-    "date": 1/1 ~ 12/31,
-    "time": 0:00~23:59
-    "emo": "joy" | "trust" | "fear" | "surprise" | "sadness" | "disgust"| " anger" | "anticipation",
-    "facing": "face" | "back"
-    "location": "private" | "public"
-}
+    "tags": [
+        {
+        "surfaces": ["しまりすさん", "シマリスさん"],
+        "embedding": {"{you}": 1.0}
+        }
+    ],
+    data: {
+        "role": "user" | "bot" | "eco",
+        "text": string,
+        "date": 1/1 ~ 12/31,
+        "time": 0:00~23:59
+        "emo": "joy" | "trust" | "fear" | "surprise" | "sadness" | "disgust"| " anger" | "anticipation",
+        "facing": "face" | "back"
+        "location": "private" | "public"
+    }
 
-* globalTags
-### preprocess
+### 2. read tags
+* /static/*.tags.jsonファイルreadWordTags()でthis.wordTagsに読み込む
+* staticSource.tagsがあればreadWordTags()同様の処理を経てthis.wordTagsに上書きする
+* firestoreource.tagsがあればreadWordTags()同様の処理を経てthis.wordTagsに上書きする。
+
+### 3. text embedding
+1. null行やテキスト行は話題の区切りとみなし、ブロックに分割する。
+2. テキストをtinySegmenterで簡易に分かち書きし、要素のリストを逆順にたどる。
+3. 要素が格助詞、副助詞、接続助詞と思われるばあいその前の要素を再結合したものについてwordTagsに含まれるか調べる。含まれる場合はそのembeddingをwordVectorに加える。
+4. 含まれない場合は前の要素と再結合した要素を0.5ずつの重みで特徴量に加える。つまり
+```
+キメラは → {"キメラ": 0.5, "キメラは": 0.5}
+``` 
+とする。こうすることで
+「私は学校に行く」「学校に私は行く」
+のように文節の位置を交換しても意味が同じ文についてwordVectorも同じにできる。また「私立大学」の「私」のように一人称ではない「私」を誤判定する可能性を小さくできる。
+
+5. ブロックごとに `this.wordVector = [[block1],[block2],...]` のように2次元配列として格納する。ここで、separator 行は wordVector に加えない。
+6. ブロックごとにdataのindexを`this.indexMap = [[block1],[block2],...]`のように2次元配列として格納する。ここでseparator行はindexMapに加えない。
+
+※5,6 では separator 行を除外する。separator 行は話題の区切りであり、埋め込み対象にはならない。またブロック末尾の行を除外する。ブロック末尾はretrieveで仮にヒットした場合返答になるべきn+1行が存在しないため、検索にヒットさせないため埋め込み対象にしない。
+
+### 4. attention embedding
+1. 最新入力を `x_n` として埋め込みを生成する。
+2. ブロック内の各行 `x_i` との類似度 `Score(n, i)` を計算する。
+3. Softmax で重み `α_i` を生成する。
+
+```text
+Score(n, i) = x_n · x_i
+α_i = softmax(Score(n,1), ..., Score(n,n-1))
+Context_n = Σ_i α_i x_i
+```
+4. this.wordVectorを平坦化(raval)する。this.indexMapを平坦化する。
+
+### 5. 全類似度行列の生成
 
 EpisodeTeackerPart.mdに記載した類似度行列計算を行い、
 * vocab: 出現する全単語（トークン）のリスト
 * matrix: 正規化済み・重み付け済み類似度行列
-* などの類似度計算に必要な中間データをdb.cacheに書き込む。その後db.cache.timestampを更新する。
-this.cacheにも計算結果を保持する。
-this.cache.timestampが他のタイムスタンプより新しくない場合はdb.cacheを呼んでthis.cacheにコピーする。
+
+
+`build()`ではまずテキスト埋め込みから得た `this.wordVector` の全トークンを走査し、
+`vocab` を生成します。`vocab` はトークンを昇順でソートした配列です。
+
+次に `matrix` を生成します。各ブロック内のアイテムごとに同じ行のトークン間の重み積
+`weightA * weightB` を加算し、各行を合計で正規化します。これにより、トークンごとの関連度
+が重み付けされ、行ごとの確率分布として扱えるようになります。
+
+最終的に `botName` / `partName` で識別されるキャッシュエントリとして Dexie の `caches` ストアに
+`{ botName, partName, timestamp, vocab, matrix }` を保存します。
+
+既存キャッシュが `source.timestamp` より新しい場合は、再構築を行わずにそのまま `this.cache`
+にコピーして使います。キャッシュが古い、または存在しない場合は、新たに生成して保存します。
 
 ## retrieve
 ```javascript
@@ -176,6 +246,11 @@ this.cache.timestampが他のタイムスタンプより新しくない場合は
  */
 function retrieve(message);
 ```
+1. messageを受け取ったら `this.messageHistory` 配列に追加する。
+2. messageの本文を埋め込みし、`this.vector` に保持する。
+3. `build()` で生成した `this.wordVector` を平坦化し、各行の埋め込みとメッセージ埋め込みの類似度を計算する。
+4. 類似度が高い上位4件を選び、ランダムに1件を選択する。
+5. 選択した行の元データの次の行を `this.dataRows` から探し、返答候補として返す。
 
 ```mermaid
 ---
@@ -193,10 +268,10 @@ sequenceDiagram
  */
 function match(message);
 ```
-messageに含まれる単語のうちthis.globalTagsに存在するものはタグ化し、
-this.globalTagsCacheに記憶する。
+messageに含まれる単語のうちthis.WordTagsに存在するものはタグ化し、
+this.WordTagsCacheに記憶する。
 messageを解析してベクトル化し、this.cacheの間で類似度計算を行う。
-スコアが高かった上位5件の中からランダムに一つを選び、タグが含まれていたらthis.globalTagsCacheを利用してタグ化の逆操作を行い、日本語化して
+スコアが高かった上位5件の中からランダムに一つを選び、タグが含まれていたらthis.WordTagsCacheを利用してタグ化の逆操作を行い、日本語化して
 message形式で返す。
 
      

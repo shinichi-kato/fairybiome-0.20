@@ -1,0 +1,13 @@
+{
+  "title": "smalltalk",
+  "author": "dev",
+  "tags": [],
+  "factor": { "activity": 0.5, "precision": 0.5 },
+  "columns": ["role","text","date","time","emo","facing","location"],
+  "data": [
+    "# smalltalk episode",
+    ["bot","いい天気だね","","09:00","","face","outdoor"],
+    ["user","本当だね","","09:01","","face","outdoor"],
+    ["bot","散歩に行きたいね","","09:02","","face","outdoor"]
+  ]
+}

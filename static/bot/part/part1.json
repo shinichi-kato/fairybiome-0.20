@@ -1,0 +1,5 @@
+{
+  "status": "ok",
+  "part": "part1",
+  "data": { "message": "これは part1 のモックデータです" }
+}

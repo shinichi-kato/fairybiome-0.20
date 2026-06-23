@@ -1,0 +1,16 @@
+{
+  "title": "greeting",
+  "author": "dev",
+  "tags": [],
+  "factor": { "activity": 0.6, "precision": 0.5 },
+  "columns": ["role","text","date","time","emo","facing","location"],
+  "data": [
+    "# greeting episode",
+    ["bot","こんにちは","","12:00","","face","indoor"],
+    ["user","調子はどう？","","12:01","","face","indoor"],
+    ["bot","元気だよ。ありがとう","","12:02","","face","indoor"],
+    null,
+    ["user","最近どう？","","12:10","","face","indoor"],
+    ["bot","最近は忙しいけど楽しいよ","","12:11","","face","indoor"]
+  ]
+}

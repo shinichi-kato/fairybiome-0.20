@@ -1,7 +1,12 @@
 {
   "title": "挨拶",
   "author":"skato",
-  "tags": [],
+  "tags": [
+    {
+      "surfaces": ["しまりすさん", "シマリスさん"],
+      "embedding": {"{you}": 1.0}
+    }
+  ],
   "factor": {
     "activity": 0.6,
     "precision": 0.4
@@ -11,7 +16,7 @@
     "# 文字列はコメント行かつ話題の区切り",
     ["bot", "こんにちは", "10/12", "12:23", "laugh", "face", "private"],
     ["user", "今日はどう？", "10/12", "12:23", "", "face", "private"],
-    ["bot", "元気ですよ。{user}さんは元気？", "10/12", "12:25", "happy", "face", "private"],
+    ["bot", "元気ですよ。{you}は元気？", "10/12", "12:25", "happy", "face", "private"],
     ["user", "まあまあ？", "10/12", "12:23", "", "face", "private"],
     ["bot", "最近は涼しくなりましたよね。", "10/12", "12:25", "happy", "face", "private"],
     null

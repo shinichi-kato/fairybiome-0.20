@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import { TinySegmenter } from '../../_legacy/biomebot-021/tinysegmenter.js';
 
 export class EpisodeStorage {
   constructor(botId) {
@@ -7,8 +8,21 @@ export class EpisodeStorage {
       firestoreSources: "++id,path",
       caches: "botName,partName",
     });
+    this._db.version(2).stores({
+      firestoreSources: "++id,path",
+      caches: "[botName+partName],botName,partName",
+    });
     this.firestore = null;
-    this.globalTags = { dict: {} };
+    this.staticSource = null;
+    this.firestoreSource = null;
+    this.cache = null;
+    this.attentionVectors = null;
+    this.wordVector = [];
+    this.indexMap = [];
+    this.dataRows = [];
+    this.messageHistory = [];
+    this.WordTags = { dict: {} };
+    this._segmenter = new TinySegmenter();
   }
 
   async deploy(botName, firestore){
@@ -31,15 +45,16 @@ export class EpisodeStorage {
       return;
     }
 
-    const globalFile = staticFiles.find((entry) =>
-      typeof entry === 'string' && (entry === 'tags/global.json' || entry.endsWith('/tags/global.json'))
-    );
-    if (globalFile) {
-      await this.readGlobalTags(globalFile);
-    }
+    /* tags/*.jsonに書き換えること*/
+    // const globalFile = staticFiles.find((entry) =>
+    //   typeof entry === 'string' && (entry === 'tags/global.json' || entry.endsWith('/tags/global.json'))
+    // );
+    // if (globalFile) {
+    //   await this.readWordTags(globalFile);
+    // }
   }
 
-  async readGlobalTags(path){
+  async readWordTags(path){
       if (!path) {
         return;
       }
@@ -48,12 +63,12 @@ export class EpisodeStorage {
       try {
         response = await fetch(path);
       } catch (err) {
-        console.warn(`EpisodeStorage.readGlobalTags: failed to fetch "${path}"`, err);
+        console.warn(`EpisodeStorage.readWordTags: failed to fetch "${path}"`, err);
         return;
       }
 
       if (!response.ok) {
-        console.warn(`EpisodeStorage.readGlobalTags: failed to load "${path}" (${response.status})`);
+        console.warn(`EpisodeStorage.readWordTags: failed to load "${path}" (${response.status})`);
         return;
       }
 
@@ -61,48 +76,52 @@ export class EpisodeStorage {
       try {
         data = await response.json();
       } catch (err) {
-        console.warn(`EpisodeStorage.readGlobalTags: invalid JSON in "${path}"`, err);
+        console.warn(`EpisodeStorage.readWordTags: invalid JSON in "${path}"`, err);
         return;
       }
 
+      this.addWordTags(data, path);
+    }
+
+  addWordTags(data, source = 'inline') {
       if (!Array.isArray(data)) {
-        console.warn(`EpisodeStorage.readGlobalTags: "${path}" must contain an array`);
+        console.warn(`EpisodeStorage.addWordTags: "${source}" must contain an array`);
         return;
       }
 
-      const seenSurface = new Set();
+      const seenSurface = new Set(Object.keys(this.WordTags.dict));
       const normalizedSurfaces = [];
 
       data.forEach((item, idx) => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) {
-          console.warn(`EpisodeStorage.readGlobalTags: invalid tag item at index ${idx} in "${path}"`);
+          console.warn(`EpisodeStorage.addWordTags: invalid tag item at index ${idx} in "${source}"`);
           return;
         }
 
         const { surfaces, embedding } = item;
         if (!Array.isArray(surfaces)) {
-          console.warn(`EpisodeStorage.readGlobalTags: tag[${idx}].surfaces must be an array in "${path}"`);
+          console.warn(`EpisodeStorage.addWordTags: tag[${idx}].surfaces must be an array in "${source}"`);
           return;
         }
         if (!embedding || typeof embedding !== 'object' || Array.isArray(embedding)) {
-          console.warn(`EpisodeStorage.readGlobalTags: tag[${idx}].embedding must be an object in "${path}"`);
+          console.warn(`EpisodeStorage.addWordTags: tag[${idx}].embedding must be an object in "${source}"`);
           return;
         }
 
         const normalizedEmbedding = this._normalizeEmbedding(embedding);
         if (!normalizedEmbedding) {
-          console.warn(`EpisodeStorage.readGlobalTags: tag[${idx}].embedding is invalid in "${path}"`);
+          console.warn(`EpisodeStorage.addWordTags: tag[${idx}].embedding is invalid in "${source}"`);
           return;
         }
 
         surfaces.forEach((surface) => {
           if (typeof surface !== 'string' || !surface.trim().length) {
-            console.warn(`EpisodeStorage.readGlobalTags: invalid surface in tag[${idx}] in "${path}"`);
+            console.warn(`EpisodeStorage.addWordTags: invalid surface in tag[${idx}] in "${source}"`);
             return;
           }
 
           if (seenSurface.has(surface)) {
-            console.warn(`EpisodeStorage.readGlobalTags: duplicate surface "${surface}" ignored in "${path}"`);
+            console.warn(`EpisodeStorage.addWordTags: duplicate surface "${surface}" ignored in "${source}"`);
             return;
           }
 
@@ -116,16 +135,569 @@ export class EpisodeStorage {
         return diff !== 0 ? diff : a.surface.localeCompare(b.surface);
       });
 
-      const dict = {};
+      const updatedDict = { ...this.WordTags.dict };
+      const baseIndex = Object.keys(this.WordTags.dict).length;
       normalizedSurfaces.forEach((item, index) => {
-        dict[item.surface] = {
-          index,
+        updatedDict[item.surface] = {
+          index: baseIndex + index,
           embedding: item.embedding,
         };
       });
 
-      this.globalTags.dict = dict;
+      this.WordTags.dict = updatedDict;
     }
+
+  async readStatic(botName, partName) {
+    if (!botName || !partName) {
+      return;
+    }
+
+    const path = `static/bots/${botName}/${partName}.episode.json`;
+    let response;
+
+    try {
+      response = await fetch(path);
+    } catch (err) {
+      console.warn(`EpisodeStorage.readStatic: failed to fetch "${path}"`, err);
+      return;
+    }
+
+    if (!response.ok) {
+      console.warn(`EpisodeStorage.readStatic: failed to load "${path}" (${response.status})`);
+      return;
+    }
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      console.warn(`EpisodeStorage.readStatic: invalid JSON in "${path}"`, err);
+      return;
+    }
+
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      console.warn(`EpisodeStorage.readStatic: "${path}" must contain an object`);
+      return;
+    }
+
+    this.staticSource = data;
+    this.staticSource.timestamp = data.timestamp !== undefined ? data.timestamp : null;
+  }
+
+  async build(botName, partName) {
+    if (!botName || !partName) {
+      return;
+    }
+
+    const sources = [
+      { name: 'staticSource', source: this.staticSource },
+      { name: 'firestoreSource', source: this.firestoreSource },
+    ].filter((entry) => entry.source);
+
+    if (sources.length === 0) {
+      console.warn('EpisodeStorage.build: no staticSource or firestoreSource loaded');
+      return;
+    }
+
+    for (const { name, source } of sources) {
+      const result = validateData(source);
+      if (result !== 'ok') {
+        console.warn(`EpisodeStorage.build: invalid ${name}`, result);
+        return;
+      }
+    }
+
+    await this._loadStaticTagFiles();
+
+    if (Array.isArray(this.staticSource?.tags)) {
+      this.addWordTags(this.staticSource.tags, 'staticSource.tags');
+    }
+
+    if (Array.isArray(this.firestoreSource?.tags)) {
+      this.addWordTags(this.firestoreSource.tags, 'firestoreSource.tags');
+    }
+
+    const sourceTimestamp = this._getSourceTimestamp();
+    const cached = await this._loadCache(botName, partName);
+    if (cached && this._isCacheFresh(cached.timestamp, sourceTimestamp)) {
+      this.cache = cached;
+    }
+
+    const dataRows = this._collectDataRows();
+    const { blocks, indexMap } = this._buildWordVectorBlocks(dataRows);
+    this.wordVector = blocks;
+    this.indexMap = indexMap;
+    this.dataRows = dataRows;
+    this.attentionVectors = this._buildAttentionVectors(this.wordVector);
+
+    if (this.cache && this._isCacheFresh(this.cache.timestamp, sourceTimestamp)) {
+      return;
+    }
+
+    const { vocab, matrix } = this._buildCacheMeta(this.wordVector);
+    const timestamp = sourceTimestamp > 0 ? sourceTimestamp : Date.now();
+    const cacheEntry = { botName, partName, timestamp, vocab, matrix };
+
+    await this._saveCache(cacheEntry);
+    this.cache = cacheEntry;
+  }
+
+  retrieve(message) {
+    this.messageHistory = Array.isArray(this.messageHistory) ? this.messageHistory : [];
+    this.messageHistory.push(message);
+
+    const text = typeof message === 'string'
+      ? message
+      : message && typeof message.text === 'string'
+        ? message.text
+        : '';
+    const messageVector = this._embedText(text);
+    this.vector = messageVector;
+
+    if (!messageVector || !Object.keys(messageVector).length || !Array.isArray(this.wordVector)) {
+      return null;
+    }
+
+    const flatVectors = [];
+    const flatIndexes = [];
+    for (let blockIndex = 0; blockIndex < this.wordVector.length; blockIndex += 1) {
+      const block = this.wordVector[blockIndex];
+      const blockIndexes = Array.isArray(this.indexMap[blockIndex]) ? this.indexMap[blockIndex] : [];
+      for (let entryIndex = 0; entryIndex < block.length; entryIndex += 1) {
+        flatVectors.push(block[entryIndex]);
+        flatIndexes.push(blockIndexes[entryIndex]);
+      }
+    }
+
+    if (!flatVectors.length) {
+      return null;
+    }
+
+    const scored = flatVectors
+      .map((vector, index) => ({ score: this._vectorDot(messageVector, vector), index }))
+      .sort((a, b) => b.score - a.score);
+
+    if (!scored.length || scored[0].score <= 0) {
+      return null;
+    }
+
+    const topCount = Math.min(4, scored.length);
+    const topCandidates = scored.slice(0, topCount);
+    const selected = topCandidates[Math.floor(Math.random() * topCandidates.length)];
+    const matchedRowIndex = flatIndexes[selected.index];
+
+    return this._getNextDataRow(matchedRowIndex);
+  }
+
+  _getNextDataRow(rowIndex) {
+    if (typeof rowIndex !== 'number' || !Array.isArray(this.dataRows)) {
+      return null;
+    }
+
+    for (let nextIndex = rowIndex + 1; nextIndex < this.dataRows.length; nextIndex += 1) {
+      const row = this.dataRows[nextIndex];
+      if (row && !row.separator && Array.isArray(row.row)) {
+        return row.row;
+      }
+    }
+
+    return null;
+  }
+
+  async _loadStaticTagFiles() {
+    const staticFilesJson = typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_STATIC_FILES : null;
+    if (!staticFilesJson) {
+      return;
+    }
+
+    let staticFiles;
+    try {
+      staticFiles = JSON.parse(staticFilesJson);
+    } catch (err) {
+      console.warn('EpisodeStorage._loadStaticTagFiles: failed to parse NEXT_PUBLIC_STATIC_FILES', err);
+      return;
+    }
+
+    if (!Array.isArray(staticFiles)) {
+      return;
+    }
+
+    for (const entry of staticFiles) {
+      if (typeof entry !== 'string') {
+        continue;
+      }
+      if (entry.endsWith('.tags.json')) {
+        await this.readWordTags(entry);
+      }
+    }
+  }
+
+  _getSourceTimestamp() {
+    const candidates = [this.staticSource?.timestamp, this.firestoreSource?.timestamp];
+    const values = candidates.map((value) => {
+      if (value instanceof Date) {
+        return value.getTime();
+      }
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+      if (typeof value === 'string' && value.trim().length) {
+        const numeric = Number(value);
+        if (Number.isFinite(numeric)) {
+          return numeric;
+        }
+        const parsedDate = Date.parse(value);
+        if (!Number.isNaN(parsedDate)) {
+          return parsedDate;
+        }
+      }
+      return null;
+    }).filter((value) => value !== null);
+
+    return values.length ? Math.max(...values) : 0;
+  }
+
+  _isCacheFresh(cacheTimestamp, sourceTimestamp) {
+    return typeof cacheTimestamp === 'number' && cacheTimestamp > 0 && sourceTimestamp > 0 && cacheTimestamp >= sourceTimestamp;
+  }
+
+  async _loadCache(botName, partName) {
+    if (!botName || !partName) {
+      return null;
+    }
+
+    try {
+      return await this._db.caches.get([botName, partName]);
+    } catch (err) {
+      console.warn('EpisodeStorage._loadCache: failed to read cache', err);
+      return null;
+    }
+  }
+
+  async _saveCache(cacheEntry) {
+    if (!cacheEntry || typeof cacheEntry !== 'object') {
+      return;
+    }
+
+    try {
+      await this._db.caches.put(cacheEntry);
+    } catch (err) {
+      console.warn('EpisodeStorage._saveCache: failed to write cache', err);
+    }
+  }
+
+  _buildCacheMeta(wordVector) {
+    const tokenSet = new Set();
+    for (const block of Array.isArray(wordVector) ? wordVector : []) {
+      if (!Array.isArray(block)) {
+        continue;
+      }
+      for (const item of block) {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          continue;
+        }
+        for (const token of Object.keys(item)) {
+          tokenSet.add(token);
+        }
+      }
+    }
+
+    const vocab = Array.from(tokenSet).sort();
+    const indexMap = vocab.reduce((map, token, index) => {
+      map[token] = index;
+      return map;
+    }, {});
+    const matrix = vocab.map(() => Array(vocab.length).fill(0));
+
+    for (const block of Array.isArray(wordVector) ? wordVector : []) {
+      if (!Array.isArray(block)) {
+        continue;
+      }
+      for (const item of block) {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          continue;
+        }
+
+        const entries = Object.entries(item).filter(([, value]) => typeof value === 'number');
+        for (let i = 0; i < entries.length; i += 1) {
+          const [tokenA, weightA] = entries[i];
+          const indexA = indexMap[tokenA];
+          if (indexA === undefined) {
+            continue;
+          }
+
+          for (let j = 0; j < entries.length; j += 1) {
+            const [tokenB, weightB] = entries[j];
+            const indexB = indexMap[tokenB];
+            if (indexB === undefined) {
+              continue;
+            }
+            matrix[indexA][indexB] += weightA * weightB;
+          }
+        }
+      }
+    }
+
+    for (const row of matrix) {
+      const sum = row.reduce((acc, value) => acc + value, 0);
+      if (sum > 0) {
+        for (let i = 0; i < row.length; i += 1) {
+          row[i] = row[i] / sum;
+        }
+      }
+    }
+
+    return { vocab, matrix };
+  }
+
+  _collectDataRows() {
+    const rows = [];
+    let index = 0;
+
+    const appendRows = (source) => {
+      if (!source || !Array.isArray(source.data)) {
+        return;
+      }
+
+      const columns = Array.isArray(source.columns) ? source.columns : [];
+      const textIndex = columns.indexOf('text') !== -1 ? columns.indexOf('text') : 1;
+
+      for (const row of source.data) {
+        if (row === null || typeof row === 'string') {
+          rows.push({ separator: true, row, index });
+          index += 1;
+          continue;
+        }
+        if (!Array.isArray(row)) {
+          index += 1;
+          continue;
+        }
+        const text = row[textIndex];
+        rows.push({ separator: false, row, text: typeof text === 'string' ? text : '', index });
+        index += 1;
+      }
+    };
+
+    appendRows(this.staticSource);
+    appendRows(this.firestoreSource);
+
+    return rows;
+  }
+
+  _buildWordVectorBlocks(dataRows) {
+    const blocks = [];
+    const indexMap = [];
+    let currentBlock = [];
+    let currentIndexBlock = [];
+
+    const flushBlock = () => {
+      if (currentBlock.length) {
+        blocks.push(currentBlock);
+        indexMap.push(currentIndexBlock);
+      }
+
+      currentBlock = [];
+      currentIndexBlock = [];
+    };
+
+    for (const item of dataRows) {
+      if (item.separator) {
+        flushBlock();
+        continue;
+      }
+
+        if (item.text && item.text.trim().length) {
+        const vector = this._embedText(item.text.trim());
+        if (Object.keys(vector).length) {
+          currentBlock.push(vector);
+          currentIndexBlock.push(item.index);
+        }
+      }
+    }
+
+    flushBlock();
+    return { blocks, indexMap };
+  }
+
+  _embedBlock(lines) {
+    const block = [];
+    for (const line of lines) {
+      const vector = this._embedText(line);
+      if (Object.keys(vector).length) {
+        block.push(vector);
+      }
+    }
+    return block;
+  }
+
+  _buildAttentionVectors(wordVector) {
+    if (!Array.isArray(wordVector)) {
+      return [];
+    }
+
+    return wordVector.map((block) => {
+      const contexts = [];
+      for (let n = 0; n < block.length; n += 1) {
+        const x_n = block[n];
+        if (!x_n || typeof x_n !== 'object') {
+          contexts.push({});
+          continue;
+        }
+
+        const scores = [];
+        for (let i = 0; i < n; i += 1) {
+          const score = this._vectorDot(x_n, block[i]);
+          scores.push(score);
+        }
+
+        const alphas = this._softmax(scores);
+        let context = {};
+        for (let i = 0; i < n; i += 1) {
+          if (!alphas[i]) {
+            continue;
+          }
+          context = this._addVector(context, block[i], alphas[i]);
+        }
+
+        contexts.push(context);
+      }
+      return contexts;
+    });
+  }
+
+  _vectorDot(a, b) {
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
+      return 0;
+    }
+
+    let sum = 0;
+    for (const [key, value] of Object.entries(a)) {
+      if (typeof value !== 'number') {
+        continue;
+      }
+      const otherValue = b[key];
+      if (typeof otherValue === 'number') {
+        sum += value * otherValue;
+      }
+    }
+    return sum;
+  }
+
+  _addVector(base, vector, scale = 1) {
+    if (!vector || typeof vector !== 'object') {
+      return base;
+    }
+    const result = { ...base };
+    for (const [key, value] of Object.entries(vector)) {
+      if (typeof value !== 'number') {
+        continue;
+      }
+      result[key] = (result[key] || 0) + value * scale;
+    }
+    return result;
+  }
+
+  _softmax(scores) {
+    if (!Array.isArray(scores) || scores.length === 0) {
+      return [];
+    }
+
+    const maxScore = Math.max(...scores);
+    const exps = scores.map((score) => Math.exp(score - maxScore));
+    const sum = exps.reduce((acc, value) => acc + value, 0);
+    if (sum === 0) {
+      return exps.map(() => 0);
+    }
+    return exps.map((value) => value / sum);
+  }
+
+  _embedText(text) {
+    const tokens = this._segmentText(text);
+    const features = {};
+
+    for (let i = tokens.length - 1; i >= 0; i -= 1) {
+      const token = tokens[i];
+      if (!token) {
+        continue;
+      }
+
+      if (this._isParticle(token) && i > 0) {
+        const prev = tokens[i - 1];
+        const combined = `${prev}${token}`;
+        const tag = this.WordTags.dict[combined];
+
+        if (tag) {
+          this._addEmbeddingToFeatures(features, tag.embedding, 1);
+          i -= 1;
+          continue;
+        }
+
+        this._addTokenWeight(features, prev, 0.5);
+        this._addTokenWeight(features, combined, 0.5);
+        i -= 1;
+        continue;
+      }
+
+      const tag = this.WordTags.dict[token];
+      if (tag) {
+        this._addEmbeddingToFeatures(features, tag.embedding, 1);
+      } else {
+        this._addTokenWeight(features, token, 1);
+      }
+    }
+
+    return features;
+  }
+
+  _segmentText(text) {
+    if (!text || typeof text !== 'string') {
+      return [];
+    }
+
+    let tokens = [];
+    if (this._segmenter && typeof this._segmenter.segment === 'function') {
+      tokens = Array.from(this._segmenter.segment(text));
+    } else {
+      tokens = text.match(/([一-龠ぁ-んァ-ヶー]+|[A-Za-z0-9]+|[^\s])/gu) || [];
+    }
+
+    return tokens
+      .map((token) => token.trim())
+      .filter((token) => token.length > 0 && !this._isPunctuation(token));
+  }
+
+  _addEmbeddingToFeatures(features, embedding, weight) {
+    if (!embedding || typeof embedding !== 'object' || Array.isArray(embedding)) {
+      return;
+    }
+
+    for (const [key, value] of Object.entries(embedding)) {
+      if (typeof value !== 'number' || Number.isNaN(value)) {
+        continue;
+      }
+      features[key] = (features[key] || 0) + value * weight;
+    }
+  }
+
+  _addTokenWeight(features, token, weight) {
+    if (!token || typeof token !== 'string') {
+      return;
+    }
+    features[token] = (features[token] || 0) + weight;
+  }
+
+  _isParticle(token) {
+    const particles = new Set([
+      'は', 'が', 'を', 'に', 'へ', 'と', 'で', 'や', 'も', 'から', 'まで', 'より', 'だけ', 'しか', 'ほど', 'こそ',
+      'ね', 'よ', 'ぞ', 'ぜ', 'さ', 'な', 'か', 'から', 'でも', 'なら', 'けれど', 'しかし', 'ため', 'ので', 'のに',
+      'ながら', 'つつ', 'まま', 'だって', 'ても', 'でも', 'たり', 'なり', 'だの', 'やら', 'でも', 'どころか', 'からこそ',
+    ]);
+    return particles.has(token);
+  }
+
+  _isPunctuation(token) {
+    return /^[\p{P}\p{S}]+$/u.test(token);
+  }
 
     _normalizeEmbedding(embedding) {
       const entries = Object.entries(embedding).filter(([key, value]) =>

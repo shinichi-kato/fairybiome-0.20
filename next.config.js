@@ -60,9 +60,9 @@ function getStaticFilesJson() {
   const botsDir = path.join(process.cwd(), 'static', 'bots');
   collectStaticFiles(botsDir, files);
 
-  const globalTagPath = path.join(process.cwd(), 'static', 'tags', 'global.json');
-  if (fs.existsSync(globalTagPath)) {
-    files.push(normalizePath(path.relative(process.cwd(), globalTagPath)));
+  const WordTagPath = path.join(process.cwd(), 'static', 'tags', 'global.json');
+  if (fs.existsSync(WordTagPath)) {
+    files.push(normalizePath(path.relative(process.cwd(), WordTagPath)));
   }
 
   return JSON.stringify(files);
