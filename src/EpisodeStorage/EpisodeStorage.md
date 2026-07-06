@@ -1,7 +1,8 @@
 EpisodeStorage
 ==============
 
-dexiejsを中核としたEpisodeTracker用のデータの保持と管理
+EpisodeStorageは予め用意したログやユーザとの会話ログから類似した発話を検索し、その次の行を返答候補として返す。
+dexiejsに学習したデータと計算キャッシュを保持する。
 
 ## dexieのDB構造
 firestoreSources={
@@ -28,10 +29,15 @@ db.version(1).stores({
 ```javascript
 /**
  * @param {string} botName - チャットボットの型式
- * @param {object} firestore - 接続済みのfirestoreインスタンス
+ * @param {string} partName - チャットボットのパートの名前
+ * @param {string} firestore_token - firestore REST APIのトークン
  */
-function deploy(botName,firestore);
+function deploy(botName, partName,firestore_token);
 ```
+- 指定したデータを読み込む
+- Dexie DB に最新の前処理済み中間データがあればそれを読み込む。
+- なければ static データまたは Firestore から元データを読み込み、特徴量行列を構築して Dexie DB に保存する。
+- データバージョンや更新日時を保存し、static データと Dexie キャッシュの不整合を検知できるようにする。
 
 ```mermaid
 ---
@@ -40,7 +46,7 @@ title: EpisodeStorage.deploy()
 sequenceDiagram
     static ->> EpisodeStorage:readWordTags()
     static ->> EpisodeStorage:readStatic()
-    firestore ->> EpisodeStorage: readFirestore()
+    learned ->> EpisodeStorage: readLearned()
     EpisodeStorage->>EpisodeStorage: build()
 
 ```
@@ -97,8 +103,9 @@ this.WordTags.dict: 順序付き辞書
 /**
  * @param {string} botName - チャットボットの型式
  * @param {string} partName - パート名
+ * @param {string} sectionName - 
  */
-async function readStatic(botName,partName);
+async function readStatic(botName,partName,sectionName=null);
 ```
 readStaticは該当したjsonをfetchしてthis.staticSourceにそのまま格納する。形式は以下の通り。
 ```json
@@ -131,17 +138,28 @@ readStaticは該当したjsonをfetchしてthis.staticSourceにそのまま格�
 }
 ```
 tag中に"{user}","{bot}"にembeddingされるタグを記載しておく。"{user}","{bot}"はそれぞれこの会話ログが記録されたときのユーザとチャットボットの名前を示す。
-
+sectionNameが指定された場合は
+```javascript
+{ [sectionName]: {
+    "tag": [],
+    "columns": [],
+    "factor": [],
+    "data": []
+}}
+```
+のように[sectionName]内に記述された内容を使用する。
 またthis.staticSource.timestampはfetchしたファイルのtimestampで上書きする。
 
-### readFirestore
+### readLearned
 ```javascript
 /**
  * @param {string} botName - チャットボットの型式
  * @param {string} partName - パート名
  */
-async function readFirestore(botName,partName);
+async function readLearned(botName,partName);
 ```
+firestoreに学習で取得したログを記憶しておき、
+readLearnedでそれを呼び出す。
 firestoreの階層構造は以下を想定。
 ```
 firestore
@@ -175,7 +193,9 @@ db.cache.timestampよりも新しい場合、両方のデータを用いて以�
         "embedding": {"{you}": 1.0}
         }
     ],
-    data: {
+    columns: ["role","text","date","time","emo","facing","location"]の中から一つ以上が選ばれていること
+    data: 行データの配列。行データはcolumnsで定義された順に値を並べた配列。columnsごとに以下の定義に従う。
+    {
         "role": "user" | "bot" | "eco",
         "text": string,
         "date": 1/1 ~ 12/31,
@@ -185,10 +205,11 @@ db.cache.timestampよりも新しい場合、両方のデータを用いて以�
         "location": "private" | "public"
     }
 
-### 2. read tags
-* /static/*.tags.jsonファイルreadWordTags()でthis.wordTagsに読み込む
-* staticSource.tagsがあればreadWordTags()同様の処理を経てthis.wordTagsに上書きする
-* firestoreource.tagsがあればreadWordTags()同様の処理を経てthis.wordTagsに上書きする。
+### 2. tagging
+1. /static/*.tags.jsonファイルreadWordTags()でthis.wordTagsに読み込む
+2. staticSource.tagsがあればreadWordTags()同様の処理を経てthis.wordTagsに上書きする
+3. firestoreource.tagsがあればreadWordTags()同様の処理を経てthis.wordTagsに上書きする。
+
 
 ### 3. text embedding
 1. null行やテキスト行は話題の区切りとみなし、ブロックに分割する。
@@ -247,10 +268,13 @@ EpisodeTeackerPart.mdに記載した類似度行列計算を行い、
 function retrieve(message);
 ```
 1. messageを受け取ったら `this.messageHistory` 配列に追加する。
-2. messageの本文を埋め込みし、`this.vector` に保持する。
+2. messageの本文をベクトル化し、`this.vector` に保持する。
 3. `build()` で生成した `this.wordVector` を平坦化し、各行の埋め込みとメッセージ埋め込みの類似度を計算する。
-4. 類似度が高い上位4件を選び、ランダムに1件を選択する。
-5. 選択した行の元データの次の行を `this.dataRows` から探し、返答候補として返す。
+4. 類似度がfactor.precisionより高いなかで上位4件を選び、ランダムに1件を選択する。
+5. 選択した行の元データの次の行を `this.dataRows` から探しoutMessageとする。
+
+6. this.wordTagsのキーを順に（＝長い順に）しらべ、キー文字列がmessageの中に含まれていたら記憶し、outMessage.textにそれを反映する。それによりmessageに'お兄さん'が含まれ、outMessageに同じタグに属する'兄'が含まれていたらoutMessageの'兄'を'お兄さん'に置き換える。
+このwordTagsの情報はインスタンスが持続する間保持する。
 
 ```mermaid
 ---
@@ -275,3 +299,13 @@ messageを解析してベクトル化し、this.cacheの間で類似度計算を
 message形式で返す。
 
      
+### templatize(text)
+this.wordTagに含まれる文字列keyがtext中に見つかったら
+* それを"{WT"+this.wordTag[key].index+"}"という文字列に置換
+* this.memory["{WT"+this.wordTag[key].index+"}"]=置換前の文字列
+この処理をwordTagの全keyについて行う。
+
+### detemplatize(text)
+{WT12}のようなタグがtext中に見つかったらthis.memory["{WT"+number+"}"]の内容でタグの部分を置き換える
+
+

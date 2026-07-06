@@ -90,7 +90,41 @@ describe('EpisodeStorage build cache and matrix', () => {
     await storage.build('botA', 'greeting');
     const response = storage.retrieve({ text: 'こんにちは' });
 
-    expect(response).toEqual(['user', '今日はどう？', '10/12', '12:24', '', 'face', 'private']);
+    expect(response).toEqual({
+      row: ['user', '今日はどう？', '10/12', '12:24', '', 'face', 'private'],
+      score: expect.any(Number),
+    });
+  });
+
+  it('replaces shorter tag surfaces after a longer tag match in the response', async () => {
+    const storage = new EpisodeStorage('botA');
+    storage.staticSource = {
+      title: '会話',
+      author: 'skato',
+      tags: [
+        {
+          surfaces: ['兄', 'お兄さん', '兄貴'],
+          embedding: { '兄': 1.0 },
+        },
+      ],
+      factor: { activity: 0.6, precision: 0.4 },
+      timestamp: 123456,
+      columns: ['role', 'text', 'date', 'time', 'emo', 'facing', 'location'],
+      data: [
+        ['bot', 'おはよう', '10/12', '12:23', 'laugh', 'face', 'private'],
+        ['user', 'お兄さん、元気？', '10/12', '12:24', '', 'face', 'private'],
+        ['bot', 'はい、兄です', '10/12', '12:25', 'happy', 'face', 'private'],
+      ],
+    };
+
+    await storage.build('botA', 'greeting');
+    const response = storage.retrieve({ text: 'お兄さん' });
+
+    expect(response).toBeDefined();
+    expect(response.row[1]).toBe('はい、お兄さんです');
+    expect(storage.WordTagsCache).toEqual({
+      0: 'お兄さん',
+    });
   });
 
   it('generates normalized matrix rows for cached vocabulary', () => {

@@ -43,7 +43,7 @@ function collectStaticFiles(dir, files = []) {
       continue;
     }
 
-    if (entry.isFile() && entry.name.endsWith('.episode.json')) {
+    if (entry.isFile()) {
       files.push(normalizePath(path.relative(process.cwd(), entryPath)));
     }
   }

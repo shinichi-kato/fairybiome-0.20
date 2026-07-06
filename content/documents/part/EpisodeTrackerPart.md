@@ -1,16 +1,15 @@
-EpisodeTrackerPartClass
+EpisodeTrackerPart Class
 =======================
 
-EpisodeTrackerPart は、予め用意したログやユーザとの会話ログから類似した発話を検索し、その次の行を返答候補として返すパートです。
+EpisodeTrackerPart は、予め用意したログやユーザとの会話ログから類似した発話を検索し、その次の行を返答候補として返すパート。実装部分はEpisodeStorage.jsにほとんど記述され、
+EpisodeTrackerPartはそれをworker化するラッパーである。
 
-## Part API
+## onmessage
 
-### deploy()
-- Dexie DB に最新の前処理済み中間データがあればそれを読み込む。
-- なければ static データまたは Firestore から元データを読み込み、特徴量行列を構築して Dexie DB に保存する。
-- データバージョンや更新日時を保存し、static データと Dexie キャッシュの不整合を検知できるようにする。
+### {type: "deploy", botName: string, partName:string}
+episodeStorage.deploy(botName,partName)を実行
 
-### receiveAndReply(message)
+### {type: "receive", message: object}
 - 受信メッセージを解析し、類似度計算を行い、返答を選択する。
 - 自分自身の別パートが発したメッセージも受信する（内言）
 - 天気や日の出・日没などのメッセージも受信する。(role="eco")
@@ -30,12 +29,14 @@ EpisodeTrackerPart は、予め用意したログやユーザとの会話ログ�
 }
 ```
 
-出力形式:
+出力は channelへのメッセージ送出で行う。
+送出メッセージ:
 ```json
 {
+  "partName": string,
   "score": number,
   "message": {<入力メッセージ>  },
-  "error": "string"
+  "error": string
 }
 ```
 #### 形式の詳細

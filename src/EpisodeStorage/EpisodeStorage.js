@@ -21,7 +21,8 @@ export class EpisodeStorage {
     this.indexMap = [];
     this.dataRows = [];
     this.messageHistory = [];
-    this.WordTags = { dict: {} };
+    this.WordTags = { dict: {}, groups: {}, nextGroupId: 0 };
+    this.WordTagsCache = {};
     this._segmenter = new TinySegmenter();
   }
 
@@ -114,6 +115,9 @@ export class EpisodeStorage {
           return;
         }
 
+        const groupId = this.WordTags.nextGroupId++;
+        const groupSurfaces = [];
+
         surfaces.forEach((surface) => {
           if (typeof surface !== 'string' || !surface.trim().length) {
             console.warn(`EpisodeStorage.addWordTags: invalid surface in tag[${idx}] in "${source}"`);
@@ -126,8 +130,15 @@ export class EpisodeStorage {
           }
 
           seenSurface.add(surface);
-          normalizedSurfaces.push({ surface, embedding: normalizedEmbedding });
+          normalizedSurfaces.push({ surface, embedding: normalizedEmbedding, groupId });
+          groupSurfaces.push(surface);
         });
+
+        if (groupSurfaces.length > 0) {
+          this.WordTags.groups[groupId] = {
+            surfaces: groupSurfaces,
+          };
+        }
       });
 
       normalizedSurfaces.sort((a, b) => {
@@ -141,6 +152,7 @@ export class EpisodeStorage {
         updatedDict[item.surface] = {
           index: baseIndex + index,
           embedding: item.embedding,
+          groupId: item.groupId,
         };
       });
 
@@ -277,16 +289,185 @@ export class EpisodeStorage {
       .map((vector, index) => ({ score: this._vectorDot(messageVector, vector), index }))
       .sort((a, b) => b.score - a.score);
 
-    if (!scored.length || scored[0].score <= 0) {
+    const precision = this._getPrecisionThreshold();
+    const candidates = scored.filter((candidate) => {
+      const rowIndex = flatIndexes[candidate.index];
+      return candidate.score > precision && this._hasNextDataRow(rowIndex);
+    });
+
+    if (!candidates.length) {
       return null;
     }
 
-    const topCount = Math.min(4, scored.length);
-    const topCandidates = scored.slice(0, topCount);
+    const topCount = Math.min(4, candidates.length);
+    const topCandidates = candidates.slice(0, topCount);
     const selected = topCandidates[Math.floor(Math.random() * topCandidates.length)];
     const matchedRowIndex = flatIndexes[selected.index];
+    const nextRow = this._getNextDataRow(matchedRowIndex);
 
-    return this._getNextDataRow(matchedRowIndex);
+    if (!nextRow) {
+      return null;
+    }
+
+    const textIndex = this._getTextIndex();
+    const responseRow = Array.isArray(nextRow) ? [...nextRow] : nextRow;
+    const substitutions = this._buildWordTagSubstitutionMap(text);
+    this.WordTagsCache = substitutions;
+
+    if (textIndex >= 0 && Array.isArray(responseRow) && typeof responseRow[textIndex] === 'string') {
+      responseRow[textIndex] = this._rewriteTextWithMatchedTags(responseRow[textIndex], substitutions);
+    }
+
+    return {
+      row: responseRow,
+      score: selected.score,
+    };
+  }
+
+  _buildWordTagSubstitutionMap(text) {
+    const substitutions = {};
+    if (!text || typeof text !== 'string' || !this.WordTags.dict) {
+      return substitutions;
+    }
+
+    const surfaces = Object.keys(this.WordTags.dict)
+      .sort((a, b) => {
+        const diff = b.length - a.length;
+        return diff !== 0 ? diff : a.localeCompare(b);
+      });
+
+    const used = Array(text.length).fill(false);
+
+    for (const surface of surfaces) {
+      const tag = this.WordTags.dict[surface];
+      if (!tag || typeof tag.groupId !== 'number') {
+        continue;
+      }
+      if (substitutions[tag.groupId]) {
+        continue;
+      }
+
+      let startIndex = 0;
+      while (startIndex < text.length) {
+        const foundIndex = text.indexOf(surface, startIndex);
+        if (foundIndex === -1) {
+          break;
+        }
+
+        let collision = false;
+        for (let i = foundIndex; i < foundIndex + surface.length; i += 1) {
+          if (used[i]) {
+            collision = true;
+            break;
+          }
+        }
+
+        if (!collision) {
+          substitutions[tag.groupId] = surface;
+          for (let i = foundIndex; i < foundIndex + surface.length; i += 1) {
+            used[i] = true;
+          }
+          break;
+        }
+
+        startIndex = foundIndex + 1;
+      }
+    }
+
+    return substitutions;
+  }
+
+  _rewriteTextWithMatchedTags(text, substitutions) {
+    if (!text || typeof text !== 'string' || Object.keys(substitutions).length === 0) {
+      return text;
+    }
+
+    const replacementMap = {};
+    for (const [surface, info] of Object.entries(this.WordTags.dict)) {
+      if (!info || typeof info.groupId !== 'number') {
+        continue;
+      }
+      const replacement = substitutions[info.groupId];
+      if (replacement) {
+        replacementMap[surface] = replacement;
+      }
+    }
+
+    const surfaces = Object.keys(replacementMap).sort((a, b) => {
+      const diff = b.length - a.length;
+      return diff !== 0 ? diff : a.localeCompare(b);
+    });
+
+    if (!surfaces.length) {
+      return text;
+    }
+
+    let result = '';
+    let index = 0;
+
+    while (index < text.length) {
+      let matched = false;
+      for (const surface of surfaces) {
+        if (text.startsWith(surface, index)) {
+          result += replacementMap[surface];
+          index += surface.length;
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched) {
+        result += text[index];
+        index += 1;
+      }
+    }
+
+    return result;
+  }
+
+  _getTextIndex() {
+    const columns = Array.isArray(this.staticSource?.columns)
+      ? this.staticSource.columns
+      : Array.isArray(this.firestoreSource?.columns)
+        ? this.firestoreSource.columns
+        : [];
+
+    const index = columns.indexOf('text');
+    return index !== -1 ? index : 1;
+  }
+
+  _getPrecisionThreshold() {
+    const staticPrecision = typeof this.staticSource?.factor?.precision === 'number'
+      ? this.staticSource.factor.precision
+      : null;
+    const firestorePrecision = typeof this.firestoreSource?.factor?.precision === 'number'
+      ? this.firestoreSource.factor.precision
+      : null;
+
+    if (staticPrecision !== null && firestorePrecision !== null) {
+      return Math.min(staticPrecision, firestorePrecision);
+    }
+    if (staticPrecision !== null) {
+      return staticPrecision;
+    }
+    if (firestorePrecision !== null) {
+      return firestorePrecision;
+    }
+    return 0;
+  }
+
+  _hasNextDataRow(rowIndex) {
+    if (typeof rowIndex !== 'number' || !Array.isArray(this.dataRows)) {
+      return false;
+    }
+
+    for (let nextIndex = rowIndex + 1; nextIndex < this.dataRows.length; nextIndex += 1) {
+      const row = this.dataRows[nextIndex];
+      if (row && !row.separator && Array.isArray(row.row)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   _getNextDataRow(rowIndex) {

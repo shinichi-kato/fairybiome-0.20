@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useReducer } from "react"
 import { EpisodeStorage } from "../EpisodeStorage/EpisodeStorage"
 
 type PartJson = {
@@ -9,11 +9,118 @@ type PartJson = {
   response: any
 }
 
+type BotAndParts = {
+  partTree: Record<string, string[]>
+  botNames: string[]
+  partNames: string[]
+  selectedBot: string
+  selectedPart: string
+}
+
+type BotAndPartsAction =
+  | { type: 'SET_SELECTED_BOT'; botName: string }
+  | { type: 'SET_SELECTED_PART'; partName: string }
+
+function reducer(state: BotAndParts, action: BotAndPartsAction): BotAndParts {
+  switch (action.type) {
+    case 'SET_SELECTED_BOT': {
+      const selectedBot = action.botName
+      const partNames = selectedBot ? state.partTree[selectedBot] ?? [] : []
+      const selectedPart = partNames[0] ?? ''
+      return {
+        ...state,
+        selectedBot,
+        partNames,
+        selectedPart,
+      }
+    }
+    case 'SET_SELECTED_PART': {
+      return {
+        ...state,
+        selectedPart: action.partName,
+      }
+    }
+    default:
+      return state
+  }
+}
+
+
+function initializeBotAndParts(): BotAndParts {
+  const staticFilesJson = process.env.NEXT_PUBLIC_STATIC_FILES
+  if (!staticFilesJson) {
+    return {
+      partTree: {},
+      botNames: [],
+      partNames: [],
+      selectedBot: "",
+      selectedPart: "",
+    }
+  }
+
+  let staticFiles
+  try {
+    staticFiles = JSON.parse(staticFilesJson)
+  } catch (err) {
+    console.warn('TestChatUI: failed to parse NEXT_PUBLIC_STATIC_FILES', err)
+    return {
+      partTree: {},
+      botNames: [],
+      partNames: [],
+      selectedBot: "",
+      selectedPart: "",
+    }
+  }
+
+  if (!Array.isArray(staticFiles)) {
+    return {
+      partTree: {},
+      botNames: [],
+      partNames: [],
+      selectedBot: "",
+      selectedPart: "",
+    }
+  }
+
+  const partTreeSets: Record<string, Set<string>> = {}
+
+  for (const entry of staticFiles) {
+    if (typeof entry !== 'string') continue
+
+    const normalized = entry.replace(/\\/g, '/')
+    const match = normalized.match(/^static\/bots\/([^\/]+)\/(.+?)\.episode\.json$/)
+    if (!match) continue
+
+    const botName = match[1]
+    const partName = match[2]
+    if (!partTreeSets[botName]) {
+      partTreeSets[botName] = new Set()
+    }
+    partTreeSets[botName].add(partName)
+  }
+
+  const botNames = Object.keys(partTreeSets).sort()
+  const partTree: Record<string, string[]> = {}
+  for (const botName of botNames) {
+    partTree[botName] = Array.from(partTreeSets[botName]).sort()
+  }
+
+  const selectedBot = botNames[0] ?? ""
+  const partNames = selectedBot ? partTree[selectedBot] : []
+  const selectedPart = partNames[0] ?? ""
+
+  return {
+    partTree,
+    botNames,
+    partNames,
+    selectedBot,
+    selectedPart,
+  }
+}
+
 export default function TestChatUI() {
-  const [botNames] = useState(["BotA", "BotB"])
-  const [parts, setParts] = useState<string[]>(["part1", "part2"]) // initial options
-  const [selectedBot, setSelectedBot] = useState(botNames[0])
-  const [selectedPart, setSelectedPart] = useState(parts[0])
+  const initialBotAndParts = initializeBotAndParts()
+  const [botAndParts, dispatch] = useReducer(reducer, initialBotAndParts)
   const [inputText, setInputText] = useState("")
   const [lastJson, setLastJson] = useState<PartJson | null>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -21,24 +128,20 @@ export default function TestChatUI() {
   const [deployed, setDeployed] = useState(false)
   const [lastRepliedAt, setLastRepliedAt] = useState<string | null>(null)
 
-  useEffect(() => {
-    setSelectedPart(parts[0])
-  }, [parts])
-
   async function deployPart() {
     setStatus("deploying")
     setLastJson(null)
     try {
-      const s = new EpisodeStorage(selectedBot)
+      const s = new EpisodeStorage(botAndParts.selectedBot)
       // read static episode file (EpisodeStorage expects static/bots/{bot}/{part}.episode.json)
-      await s.readStatic(selectedBot, selectedPart)
-      await s.build(selectedBot, selectedPart)
+      await s.readStatic(botAndParts.selectedBot, botAndParts.selectedPart)
+      await s.build(botAndParts.selectedBot, botAndParts.selectedPart)
       setStorage(s)
       setDeployed(true)
       setStatus("deployed")
     } catch (err) {
       setStatus("error")
-      setLastJson({ partName: selectedPart, status: "error", response: { error: String(err) } })
+      setLastJson({ partName: botAndParts.selectedPart, status: "error", response: { error: String(err) } })
     }
   }
 
@@ -50,13 +153,18 @@ export default function TestChatUI() {
         const message = { role: "user", id: "dummy", text: inputText }
         const result = storage.retrieve(message)
         if (!result) {
-          setLastJson({ partName: selectedPart, status: "not_found", response: null })
+          setLastJson({ partName: botAndParts.selectedPart, status: "not_found", response: null })
           setStatus("not_found")
         } else {
           const payload: PartJson = {
-            partName: selectedPart,
+            partName: botAndParts.selectedPart,
             status: "ok",
-            response: { bot: selectedBot, input: inputText, reply: result },
+            response: {
+              bot: botAndParts.selectedBot,
+              input: inputText,
+              reply: result.row,
+              score: result.score,
+            },
           }
           setLastJson(payload)
           setStatus("ok")
@@ -64,14 +172,14 @@ export default function TestChatUI() {
         }
       } else {
         // fallback to static JSON fetch
-        const res = await fetch(`/static/bot/part/${selectedPart}.json`)
+        const res = await fetch(`/static/bot/part/${botAndParts.selectedPart}.json`)
         if (!res.ok) throw new Error("not found")
         const data = await res.json()
         const payload: PartJson = {
-          partName: selectedPart,
+          partName: botAndParts.selectedPart,
           status: data.status ?? "ok",
           response: {
-            bot: selectedBot,
+            bot: botAndParts.selectedBot,
             input: inputText,
             partData: data,
           },
@@ -81,7 +189,7 @@ export default function TestChatUI() {
       }
     } catch (err) {
       setStatus("error")
-      setLastJson({ partName: selectedPart, status: "error", response: { error: String(err) } })
+      setLastJson({ partName: botAndParts.selectedPart, status: "error", response: { error: String(err) } })
     }
   }
 
@@ -92,8 +200,8 @@ export default function TestChatUI() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         <label className="flex flex-col">
           <span className="text-sm">チャットボット</span>
-          <select value={selectedBot} onChange={(e) => setSelectedBot(e.target.value)} className="mt-1 p-2 border rounded">
-            {botNames.map((b) => (
+          <select value={botAndParts.selectedBot} onChange={(e) => dispatch({ type: 'SET_SELECTED_BOT', botName: e.target.value })} className="mt-1 p-2 border rounded">
+            {botAndParts.botNames.map((b) => (
               <option key={b} value={b}>
                 {b}
               </option>
@@ -103,8 +211,8 @@ export default function TestChatUI() {
 
         <label className="flex flex-col">
           <span className="text-sm">パート</span>
-          <select value={selectedPart} onChange={(e) => setSelectedPart(e.target.value)} className="mt-1 p-2 border rounded">
-            {parts.map((p) => (
+          <select value={botAndParts.selectedPart} onChange={(e) => dispatch({ type: 'SET_SELECTED_PART', partName: e.target.value })} className="mt-1 p-2 border rounded">
+            {botAndParts.partNames.map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>
