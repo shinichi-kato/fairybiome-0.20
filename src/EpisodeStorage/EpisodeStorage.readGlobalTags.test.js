@@ -11,6 +11,21 @@ describe('EpisodeStorage.readWordTags', () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
+    delete process.env.NEXT_PUBLIC_STATIC_FILES;
+  });
+
+  it('loads all tag JSON files under tags/ when deployFromJson is used', async () => {
+    process.env.NEXT_PUBLIC_STATIC_FILES = JSON.stringify(['tags/alpha.json', 'tags/beta.json', 'docs/ignore.json']);
+    global.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => [{ surfaces: ['A'], embedding: { A: 1.0 } }] })
+      .mockResolvedValueOnce({ ok: true, json: async () => [{ surfaces: ['B'], embedding: { B: 1.0 } }] });
+
+    const storage = new EpisodeStorage('botA');
+    await storage.deployFromJson('botA', 'partA');
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(global.fetch.mock.calls.map(([path]) => path)).toEqual(['tags/alpha.json', 'tags/beta.json']);
+    expect(Object.keys(storage.WordTags.dict)).toEqual(['A', 'B']);
   });
 
   it('loads global tags and stores them in WordTags.dict sorted by surface length', async () => {

@@ -71,6 +71,12 @@ describe('EpisodeStorage build cache and matrix', () => {
     expect(storage2.cache.matrix).toEqual(storage1.cache.matrix);
   });
 
+  it('throws a proper Error when botName or partName is missing', async () => {
+    const storage = new EpisodeStorage('botA');
+
+    await expect(storage.build()).rejects.toThrow('botNameとpartNameが指定されていない');
+  });
+
   it('retrieves the next row after the matched line', async () => {
     const storage = new EpisodeStorage('botA');
     storage.staticSource = {

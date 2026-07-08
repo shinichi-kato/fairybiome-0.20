@@ -2,7 +2,7 @@ import Dexie from 'dexie';
 import { TinySegmenter } from '../../_legacy/biomebot-021/tinysegmenter.js';
 
 export class EpisodeStorage {
-  constructor(botId) {
+  constructor(firestore_token) {
     this._db = new Dexie("EpisodeStorage");
     this._db.version(1).stores({
       firestoreSources: "++id,path",
@@ -12,7 +12,11 @@ export class EpisodeStorage {
       firestoreSources: "++id,path",
       caches: "[botName+partName],botName,partName",
     });
-    this.firestore = null;
+    this.botName = null;
+    this.partName = null;
+    this.factor = null;
+    this.data
+    this.firestore_token = firestore_token;
     this.staticSource = null;
     this.firestoreSource = null;
     this.cache = null;
@@ -26,33 +30,24 @@ export class EpisodeStorage {
     this._segmenter = new TinySegmenter();
   }
 
-  async deploy(botName, firestore){
-    this.firestore = firestore;
-
-    const staticFilesJson = typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_STATIC_FILES : null;
-    if (!staticFilesJson) {
-      return;
+  async deploy(botName,partName, data=null){
+    // dataが供給された場合それを優先
+    this.botName=botName;
+    this.partName=partName;
+    if(!!data){
+      await this.readStatic(botName,partName);
+    }
+    else {
+      this.staticSource=data;
     }
 
-    let staticFiles;
-    try {
-      staticFiles = JSON.parse(staticFilesJson);
-    } catch (err) {
-      console.warn('EpisodeStorage.deploy: failed to parse NEXT_PUBLIC_STATIC_FILES', err);
-      return;
-    }
+    await this.build(botName, partName);
+  }
 
-    if (!Array.isArray(staticFiles)) {
-      return;
-    }
-
-    /* tags/*.jsonに書き換えること*/
-    // const globalFile = staticFiles.find((entry) =>
-    //   typeof entry === 'string' && (entry === 'tags/global.json' || entry.endsWith('/tags/global.json'))
-    // );
-    // if (globalFile) {
-    //   await this.readWordTags(globalFile);
-    // }
+  async deployFromJson(botName, partName){
+    this.botName = botName;
+    this.partName = partName;
+    await this._loadStaticTagFiles();
   }
 
   async readWordTags(path){
@@ -196,10 +191,13 @@ export class EpisodeStorage {
     this.staticSource.timestamp = data.timestamp !== undefined ? data.timestamp : null;
   }
 
-  async build(botName, partName) {
+  async build(botName = this.botName, partName = this.partName) {
     if (!botName || !partName) {
-      return;
+      throw new Error("build: botNameとpartNameが指定されていない");
     }
+
+    this.botName = botName;
+    this.partName = partName;
 
     const sources = [
       { name: 'staticSource', source: this.staticSource },
@@ -254,7 +252,7 @@ export class EpisodeStorage {
     this.cache = cacheEntry;
   }
 
-  retrieve(message) {
+  retrieve(message, verbose=false) {
     this.messageHistory = Array.isArray(this.messageHistory) ? this.messageHistory : [];
     this.messageHistory.push(message);
 
@@ -265,9 +263,13 @@ export class EpisodeStorage {
         : '';
     const messageVector = this._embedText(text);
     this.vector = messageVector;
+    console.log("retrieve vector",this.vector);
 
     if (!messageVector || !Object.keys(messageVector).length || !Array.isArray(this.wordVector)) {
-      return null;
+      return {
+        status: "error",
+        message:"入力メッセージがベクトル化できませんでした"
+      }
     }
 
     const flatVectors = [];
@@ -282,7 +284,10 @@ export class EpisodeStorage {
     }
 
     if (!flatVectors.length) {
-      return null;
+      return {
+        status: "error",
+        message: "flatVectorsが空です"
+      }
     }
 
     const scored = flatVectors
@@ -296,7 +301,19 @@ export class EpisodeStorage {
     });
 
     if (!candidates.length) {
-      return null;
+      if(verbose){
+        let ms = [];
+        const viewSize = 5 ? scored.length>5 : scored.length;
+        for(let i=0; i<viewSize; i++){
+          let v=scored[i];
+          ms.push(`${this.partName} ${i}: score: ${v.score}, index: ${v.index}`)
+        }
+        return {
+          status: "low score",
+          message: ms.join('<br>')
+        }
+      }
+      return null
     }
 
     const topCount = Math.min(4, candidates.length);
@@ -306,6 +323,12 @@ export class EpisodeStorage {
     const nextRow = this._getNextDataRow(matchedRowIndex);
 
     if (!nextRow) {
+      if(verbose){
+        return {
+          status: "no textRow",
+          message: `${this.partName} matchedRowIndex=${matchedRowIndex}, topCount=${topCount}`
+        }
+      }
       return null;
     }
 
@@ -319,6 +342,7 @@ export class EpisodeStorage {
     }
 
     return {
+      status: "ok",
       row: responseRow,
       score: selected.score,
     };
@@ -507,8 +531,10 @@ export class EpisodeStorage {
       if (typeof entry !== 'string') {
         continue;
       }
-      if (entry.endsWith('.tags.json')) {
-        await this.readWordTags(entry);
+
+      const normalizedEntry = entry.replace(/\\/g, '/');
+      if (/(^|\/)tags\/[^/]+\.json$/.test(normalizedEntry)) {
+        await this.readWordTags(normalizedEntry);
       }
     }
   }
@@ -1062,32 +1088,44 @@ export function validateData(data) {
         return;
       }
 
-      const [role, text, date, time, emo, facing, location] = row;
-      if (typeof role !== 'string' || !validRoles.has(role)) {
-        errors.push(`data[${rowIdx}][0] role must be one of ${Array.from(validRoles).join(', ')}`);
-      }
-      if (typeof text !== 'string' || !text.trim().length) {
-        errors.push(`data[${rowIdx}][1] text must be a non-empty string`);
-      }
-      if (!isValidDate(date)) {
-        errors.push(`data[${rowIdx}][2] date must be "%m/%d" or empty/null`);
-      }
-      if (!isValidTime(time)) {
-        errors.push(`data[${rowIdx}][3] time must be "%H:%M" or empty/null`);
-      }
-      if (typeof emo !== 'string') {
-        errors.push(`data[${rowIdx}][4] emo must be a string`);
-      }
-      if (facing !== null && facing !== '' && typeof facing !== 'string' && typeof facing !== 'number') {
-        errors.push(`data[${rowIdx}][5] facing must be a string or number`);
-      } else if (typeof facing === 'string' && !validFacingStrings.has(facing)) {
-        errors.push(`data[${rowIdx}][5] facing must be one of ${Array.from(validFacingStrings).join(', ')}`);
-      } else if (typeof facing === 'number' && !validFacingNumbers.has(facing)) {
-        errors.push(`data[${rowIdx}][5] facing must be 0 or Math.PI`);
-      }
-      if (location !== null && location !== '' && typeof location !== 'string') {
-        errors.push(`data[${rowIdx}][6] location must be a string`);
-      }
+      // Validate each column based on its name from data.columns
+      data.columns.forEach((columnName, colIdx) => {
+        const value = row[colIdx];
+
+        if (columnName === 'role') {
+          if (typeof value !== 'string' || !validRoles.has(value)) {
+            errors.push(`data[${rowIdx}][${colIdx}] role must be one of ${Array.from(validRoles).join(', ')}`);
+          }
+        } else if (columnName === 'text') {
+          if (typeof value !== 'string' || !value.trim().length) {
+            errors.push(`data[${rowIdx}][${colIdx}] text must be a non-empty string`);
+          }
+        } else if (columnName === 'date') {
+          if (!isValidDate(value)) {
+            errors.push(`data[${rowIdx}][${colIdx}] date must be "%m/%d" or empty/null`);
+          }
+        } else if (columnName === 'time') {
+          if (!isValidTime(value)) {
+            errors.push(`data[${rowIdx}][${colIdx}] time must be "%H:%M" or empty/null`);
+          }
+        } else if (columnName === 'emo') {
+          if (typeof value !== 'string') {
+            errors.push(`data[${rowIdx}][${colIdx}] emo must be a string`);
+          }
+        } else if (columnName === 'facing') {
+          if (value !== null && value !== '' && typeof value !== 'string' && typeof value !== 'number') {
+            errors.push(`data[${rowIdx}][${colIdx}] facing must be a string or number`);
+          } else if (typeof value === 'string' && !validFacingStrings.has(value)) {
+            errors.push(`data[${rowIdx}][${colIdx}] facing must be one of ${Array.from(validFacingStrings).join(', ')}`);
+          } else if (typeof value === 'number' && !validFacingNumbers.has(value)) {
+            errors.push(`data[${rowIdx}][${colIdx}] facing must be 0 or Math.PI`);
+          }
+        } else if (columnName === 'location') {
+          if (value !== null && value !== '' && typeof value !== 'string') {
+            errors.push(`data[${rowIdx}][${colIdx}] location must be a string`);
+          }
+        }
+      });
     });
   }
 

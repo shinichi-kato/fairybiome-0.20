@@ -151,7 +151,8 @@ export default function TestChatUI() {
     try {
       if (deployed && storage) {
         const message = { role: "user", id: "dummy", text: inputText }
-        const result = storage.retrieve(message)
+        const verbose = true;
+        const result = storage.retrieve(message, verbose)
         if (!result) {
           setLastJson({ partName: botAndParts.selectedPart, status: "not_found", response: null })
           setStatus("not_found")
@@ -162,8 +163,7 @@ export default function TestChatUI() {
             response: {
               bot: botAndParts.selectedBot,
               input: inputText,
-              reply: result.row,
-              score: result.score,
+              ...result,
             },
           }
           setLastJson(payload)

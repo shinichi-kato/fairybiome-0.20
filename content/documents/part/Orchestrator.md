@@ -40,18 +40,15 @@ static/bots/{botName}/orchestrator.jsonを読む。内容は以下の通り
  
 }
 ```
-## deployNotOnStage(botName, firestore_token)
-上記のファイルを読みstandByセクションをEpisodeStorageでdeploy
+## deploy()
+* notFoundセクションをEpisodeStorageでdeploy
+* notOnStageセクションをEpisodeStorageでdeploy
 
 ## retrieveNotOnStage(message)
-
 * standByセクションを使用してユーザの呼びかけに応じて返答を生成して返す。
 
-## deployNotFound()
-* notFoundセクションをEpisodeStorageでdeploy
 
 ## retrieveNotFound(message)
-
 * notFoundセクションを使用して返答を生成して返す。
 
 
