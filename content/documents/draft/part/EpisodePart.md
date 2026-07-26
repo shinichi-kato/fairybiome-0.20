@@ -1,8 +1,8 @@
-EpisodeTrackerPart Class
+EpisodePart Class
 =======================
 
-EpisodeTrackerPart は、予め用意したログやユーザとの会話ログから類似した発話を検索し、その次の行を返答候補として返すパート。実装部分はEpisodeStorage.jsにほとんど記述され、
-EpisodeTrackerPartはそれをworker化するラッパーである。
+EpisodePart は、予め用意したログやユーザとの会話ログから類似した発話を検索し、その次の行を返答候補として返すパート。実装部分はEpisodeStorage.jsにほとんど記述され、
+EpisodePartはそれをworker化するラッパーである。
 
 ## onmessage
 
@@ -131,10 +131,10 @@ Context_n = Σ_i α_i x_i
 
 なお、候補が見つからなかった場合専用のパート(precisionが0)を別途用意してフォールバックとする。
 
-## EpisodeTrackerのデータ形式
+## Episodeのデータ形式
 
 チャットログのデータを以下の形式で記録する。
-columnsの内容はEpisodeTrackerの特徴量で、適宜省略可能である。
+columnsの内容はEpisodeの特徴量で、適宜省略可能である。
 ```json
 {
   "title": "挨拶",

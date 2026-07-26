@@ -1,9 +1,11 @@
 Orchestrator
 ============
 
+
+* ユーザや環境から
 ユーザや環境から受け取ったメッセージをパートに配信し、
 パートから受け取ったメッセージを統合する特殊なパート。
-そのうちworker部分以外のロジックを記述。ここで定義した関数を
+そのうちworker化部分以外のロジックを記述。ここで定義した関数を
 OrchestratorPartClass.mdに記載したOrchestratorPartでworker化する。
 
 static/bots/{botName}/orchestrator.jsonを読む。内容は以下の通り
@@ -14,37 +16,20 @@ static/bots/{botName}/orchestrator.jsonを読む。内容は以下の通り
         "intervals": [300,200,250],
         "attenuation": 0.7
     },
-    "notFound":{
-        "factor": {
-            "activity": 1,
-            "precision": 0.4
-        },
-        "columns": ["role","text","date","time","emo","facing", "location"],
-        "data": [
-            ["user","？", null,null,"期待","private"],
-            ["bot","うーん",null,null,"期待","private"]
-        ]
-    },
-    "notOnStage": {
-        "factor": {
-            "activity": 1,
-            "precision": 0.4
-        },
-        "columns": ["role","text","date","time","emo","location"],
-        "data": [
-            ["user","おーい",null,"8:30","期待","private"],
-            ["bot","はーい{START}",,null,"8:30","期待","private"]
-        ]
+    "tags": [
+    {
+      "surfaces": ["{bot}"],
+      "embedding": {"アウルラ": 1.0}
     }
-
+  ],
  
 }
 ```
-## deploy()
-* notFoundセクションをEpisodeStorageでdeploy
-* notOnStageセクションをEpisodeStorageでdeploy
+## deploy0()
+* kernelへのmessageで全パートをdeactivate
+* kernelへのmessageでoffstageパートのactivate
 
-## retrieveNotOnStage(message)
+## retrieve0(message)
 * standByセクションを使用してユーザの呼びかけに応じて返答を生成して返す。
 
 

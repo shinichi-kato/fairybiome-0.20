@@ -22,6 +22,9 @@ const nextConfig = {
     NEXT_PUBLIC_STATIC_FILES: getStaticFilesJson(),
   },
 
+  // Turbopack 互換設定
+  turbopack: {},
+
   // webpack 設定
   webpack: (config, { isServer }) => {
     if (!isServer) {

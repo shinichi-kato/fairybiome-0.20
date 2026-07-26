@@ -1,0 +1,19 @@
+{
+  "title": "回答が見つからないときの応答",
+  "author":"skato",
+  "tags": [
+    {
+      "surfaces": ["しまりすさん", "シマリスさん"],
+      "embedding": {"{you}": 1.0}
+    }
+  ],
+  "factor": {
+    "activity": 1,
+    "precision": 0.4
+  },
+  "columns": ["role","text","date","time","emo","facing", "location"],
+  "data": [
+      ["user","？", null,null,"期待","private"],
+      ["bot","うーん",null,null,"期待","private"]
+  ]
+}

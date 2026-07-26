@@ -1,0 +1,19 @@
+{
+  "title": "登場前",
+  "author":"skato",
+  "tags": [
+    {
+      "surfaces": ["しまりすさん", "シマリスさん"],
+      "embedding": {"{you}": 1.0}
+    }
+  ],
+  "factor": {
+    "activity": 1,
+    "precision": 0.4
+  },
+  "columns": ["role","text","date","time","emo","location"],
+  "data": [
+      ["user","おーい",null,"8:30","期待","private"],
+      ["bot","はーい{START}",null,"8:30","期待","private"]
+  ]
+}
