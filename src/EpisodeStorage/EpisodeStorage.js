@@ -15,7 +15,7 @@ export class EpisodeStorage {
     this.botName = null;
     this.partName = null;
     this.factor = null;
-    this.data
+    this.data;
     this.firestore_token = firestore_token;
     this.staticSource = null;
     this.firestoreSource = null;
@@ -41,7 +41,7 @@ export class EpisodeStorage {
       this.staticSource=data;
     }
 
-    await this.build(botName, partName);
+    return await this.build(botName, partName);
   }
 
   async deployFromJson(botName, partName){
@@ -206,14 +206,14 @@ export class EpisodeStorage {
 
     if (sources.length === 0) {
       console.warn('EpisodeStorage.build: no staticSource or firestoreSource loaded');
-      return;
+      return false;
     }
 
     for (const { name, source } of sources) {
       const result = validateData(source);
       if (result !== 'ok') {
         console.warn(`EpisodeStorage.build: invalid ${name}`, result);
-        return;
+        return false;
       }
     }
 
@@ -241,7 +241,7 @@ export class EpisodeStorage {
     this.attentionVectors = this._buildAttentionVectors(this.wordVector);
 
     if (this.cache && this._isCacheFresh(this.cache.timestamp, sourceTimestamp)) {
-      return;
+      return true;
     }
 
     const { vocab, matrix } = this._buildCacheMeta(this.wordVector);
@@ -250,6 +250,7 @@ export class EpisodeStorage {
 
     await this._saveCache(cacheEntry);
     this.cache = cacheEntry;
+    return true;
   }
 
   retrieve(message, verbose=false) {

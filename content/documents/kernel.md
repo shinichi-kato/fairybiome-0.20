@@ -27,12 +27,8 @@ partは`src/biomebot/kernel.ts`から必要に応じて**遅延ロード**（動
 ## 通信仕様（共通）
 
 ### メッセージングチャネル
-各パートはworker専用のchannelとぼっと単位で一つの共有BroadastChannelを使用。
-```
-チャネル名: biomebot-${botName}
-```
 * カーネルとパート間の通信はworker専用のchennelを使用。
-* パート間のメッセージやり取りはBroadcastChannelを使用して行う。
+* パート間のメッセージやり取りはBroadcastChannel `biomebot-${botName}`を使用して行う。
 
 ### タイムアウト
 - **デフォルトタイムアウト**: 3000ms (3秒)

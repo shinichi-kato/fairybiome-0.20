@@ -1,12 +1,15 @@
-export class OrchestratorPart {
+import { Part } from '../part.js';
+
+export class OrchestratorPart extends Part {
   constructor(options = {}) {
+    super(options.botName ?? null, options.partName ?? 'orchestrator');
     this.orchestrator = options.orchestrator ?? null;
     this.isWorker = options.isWorker ?? true;
     this.state = 'starting';
-    this.botName = null;
+    this.botName = options.botName ?? null;
     this.firestoreToken = null;
     this.listeners = new Map();
-    this._broadcastChannel = options.broadcastChannel ?? null;
+    this._broadcastChannel = options.broadcastChannel ?? this._broadcastChannel ?? null;
     this._pendingMessages = [];
   }
 

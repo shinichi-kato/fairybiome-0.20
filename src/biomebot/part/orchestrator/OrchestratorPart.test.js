@@ -1,7 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
+import { Part } from '../part.js';
 import { OrchestratorPart } from './OrchestratorPart.js';
 
 describe('OrchestratorPart', () => {
+  it('inherits from the shared Part base class', () => {
+    const part = new OrchestratorPart({ isWorker: false });
+
+    expect(part).toBeInstanceOf(Part);
+    expect(typeof part.activate).toBe('function');
+  });
+
   it('transitions from standBy to deploy when a start token is returned', async () => {
     const orchestrator = {
       deployNotOnStage: vi.fn().mockResolvedValue({ state: 'standBy' }),
