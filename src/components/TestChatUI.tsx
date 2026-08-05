@@ -72,7 +72,18 @@ function initializeBotAndParts(): BotAndParts {
     }
   }
 
-  if (!Array.isArray(staticFiles)) {
+  if (!staticFiles || typeof staticFiles !== 'object' || Array.isArray(staticFiles)) {
+    return {
+      partTree: {},
+      botNames: [],
+      partNames: [],
+      selectedBot: "",
+      selectedPart: "",
+    }
+  }
+
+  const bots = staticFiles.bots
+  if (!bots || typeof bots !== 'object' || Array.isArray(bots)) {
     return {
       partTree: {},
       botNames: [],
@@ -84,19 +95,24 @@ function initializeBotAndParts(): BotAndParts {
 
   const partTreeSets: Record<string, Set<string>> = {}
 
-  for (const entry of staticFiles) {
-    if (typeof entry !== 'string') continue
+  for (const [botName, partPaths] of Object.entries(bots)) {
+    if (!Array.isArray(partPaths)) continue
 
-    const normalized = entry.replace(/\\/g, '/')
-    const match = normalized.match(/^static\/bots\/([^\/]+)\/(.+?)\.episode\.json$/)
-    if (!match) continue
-
-    const botName = match[1]
-    const partName = match[2]
     if (!partTreeSets[botName]) {
       partTreeSets[botName] = new Set()
     }
-    partTreeSets[botName].add(partName)
+
+    for (const entry of partPaths) {
+      if (typeof entry !== 'string') continue
+
+      const normalized = entry.replace(/\\/g, '/')
+      const match = normalized.match(/^static\/bots\/([^\/]+)\/(.+?)\.episode\.json$/)
+      const simpleMatch = normalized.match(/([^/]+)\.episode\.json$/)
+      const partName = match ? match[2] : simpleMatch ? simpleMatch[1] : null
+      if (!partName) continue
+
+      partTreeSets[botName].add(partName)
+    }
   }
 
   const botNames = Object.keys(partTreeSets).sort()

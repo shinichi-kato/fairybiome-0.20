@@ -59,16 +59,45 @@ function normalizePath(filePath) {
 }
 
 function getStaticFilesJson() {
-  const files = [];
-  const botsDir = path.join(process.cwd(), 'static', 'bots');
-  collectStaticFiles(botsDir, files);
+  const staticFiles = {
+    bots: {},
+    wordTags: [],
+  };
 
-  const WordTagPath = path.join(process.cwd(), 'static', 'tags', 'global.json');
-  if (fs.existsSync(WordTagPath)) {
-    files.push(normalizePath(path.relative(process.cwd(), WordTagPath)));
+  const botsDir = path.join(process.cwd(), 'static', 'bots');
+  if (fs.existsSync(botsDir)) {
+    for (const entry of fs.readdirSync(botsDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      const botName = entry.name;
+      const partPaths = [];
+      collectStaticFiles(path.join(botsDir, botName), partPaths);
+
+      const normalizedPartPaths = partPaths
+        .map((filePath) => normalizePath(filePath))
+        .filter((filePath) => filePath.startsWith(`static/bots/${botName}/`) && /\.episode\.json$/i.test(filePath))
+        .sort();
+
+      if (normalizedPartPaths.length > 0) {
+        staticFiles.bots[botName] = normalizedPartPaths;
+      }
+    }
   }
 
-  return JSON.stringify(files);
+  const tagsDir = path.join(process.cwd(), 'static', 'tags');
+  if (fs.existsSync(tagsDir)) {
+    const tagFiles = [];
+    collectStaticFiles(tagsDir, tagFiles);
+
+    staticFiles.wordTags = tagFiles
+      .map((filePath) => normalizePath(filePath))
+      .filter((filePath) => /(^|\/)[^/]+\.json$/i.test(filePath))
+      .sort();
+  }
+
+  return JSON.stringify(staticFiles);
 }
 
 export default nextConfig;

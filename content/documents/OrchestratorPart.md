@@ -1,6 +1,6 @@
 OrchestratorPart
 ================
-* チャットボットの未登場↔登場という状態管理を行う。
+* チャットボットの未登場↔登場という状態管理を行い、他のpartの状態をkernelを介して制御する。
 * パートから受け取ったメッセージを蓄積し、定期的にそれらを統合して返答を返す
 
 orchestrator.jsonには以下の内容を格納する
@@ -11,13 +11,32 @@ orchestrator.jsonには以下の内容を格納する
         "intervals": [300,200,250],
         "attenuation": 0.7,
     },
-    "botName": ["アウルラ"],
+    "botDisplayName": ["アウルラ"],
     "fallbacks": ["..."]
  
 }
 ```
 
-## 状態管理
+## パート発言の統合
+```mermaid
+sequenceDiagram
+participant Outer@{"type": "boundary" }
+participant Kernel
+participant PartWorkers@{ "type" : "collections" }
+    Outer->>Kernel: post()
+    Kernel-)PartWorkers: input
+    PartWorkers-)PartWorkers: innerSpeech
+    PartWorkers-)OrchestratorWorker: innerSpeech
+    OrchestratorWorker-)Kernel: output
+    Kernel->>Outer: callback関数
+```
+外部からの刺激は他のチャットボットやユーザからの発言とエコシステムからの入力である。入力を受け取ったらkernelがbroadcast Channelでこれらを `{type: 'input'}`として配信。すべてのactive状態のパートが受信する。受信したパートは回答したければ`{type: "innerSpeech"}` としてbroadcastChannelに送信する。
+また、パートはinnerSpeechに対して反応して別のinnerSpeechを発言しても良い。
+Orchestratorは一定期間中のinnerSpeechを受信し、統合して `{type:"output"}`とする。これをうけとったkernelはコールバック関数でこれをUIに渡す。
+
+
+
+## 登場↔未登場状態管理
 
 ```mermaid
 flowchart LR
@@ -37,14 +56,15 @@ flowchart LR
     end
 ```
 
-### start
-* bot用のbroadcast channelから内言messageを受け取ったら蓄積するイベントリスナーの開始
+### initialize
+インスタンスの初期化
 完了したらdeploy0に遷移
-* report時返答: 状態名
 
 ### deploy0
 * kernelに「orchestrator以外全パートdeactivate」をpost
+  -> {type:"deactivate",botName,excludedPartNames:["orchestrator"]}
 * kernelに「offstageパートのactivate」をpost。
+  -> {type:"activate",botName,partNames:["offstage"]}
 完了したらpolling0に遷移
 
 * report時返答: 状態名
@@ -64,8 +84,10 @@ flowchart LR
 * report時返答: 状態名,全メッセージリスト
 
 ### deploy1
-* kernelに「orchestrator,以外全パートdeactivate」をpost
+* kernelに「orchestrator以外全パートdeactivate」をpost
+　ｰ>{type:"deactivate",botName,excludedPartNames:["orchestrator"]}
 * kernelに「offstageパート以外のactivate」をpost
+  ->{type:"activate",botName,excludedPartNames:["offstage"]}
 完了したらpolling1に遷移
 
 * report時返答: 状態名,全メッセージリスト
@@ -84,17 +106,17 @@ flowchart LR
 
 ## カーネルとの通信
 
-### activate
+### activate　(kernel -> orchestrator)
 {type: "activate"}
 を受け取ったら
 * broadcast channelからのメッセージを受け取るモードになる。
 * {type: "activated"}をworkerのchannelにポストする
 
-### deactivate
+### deactivate (kernel -> orchestrator)
 {type: "deactivate"}
 を受け取ったらbroadcast channelからのメッセージを受け取らないモードになる。
 * {type: "deactivated"}をworkerのchannelにポストする
 
-### report
+### report (kernel->orchestrator)
 {type: "report"}を受け取ったら
 {type: "reported", stateName, レポート内容}をworkerのchannelにポストする。

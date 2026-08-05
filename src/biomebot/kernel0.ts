@@ -493,15 +493,25 @@ export class Kernel {
       throw new Error(`Part ${partId} not found in cache`);
     }
 
-    // In browser environment with MessagePort, parts are typically
-    // already running workers that receive a MessagePort via postMessage.
-    // This is where the kernel would establish the workerChannel (MessagePort).
-    // For now, this is a placeholder for future worker instantiation logic.
-    
-    // When a worker is created and posts back with its MessagePort endpoint,
-    // it would be set here: part.workerChannel = receivedMessagePort
-    // Then: this._setupWorkerChannelListener(botName, partName, part.workerChannel)
-    
+    if (partName.endsWith('.episode.json')) {
+      part.worker = new Worker('/src/biomebot/parts/episode/EpisodePartWorker.js');
+    }
+    else if (partName === 'orchestrator.json') {
+      part.worker = new Worker('/src/biomebot/parts/orchestrator/OrchestratorPartWorker.js');
+    }
+    else {
+      throw new Error(`Unknown part type for ${partName}`);
+    }
+
+    part.worker.onmessage = (channelEvent) => {
+      const event = channelEvent.data;
+      switch(event.type) {
+        case 'activate': {
+          this.activate()
+        }
+      }
+    }
+
     part.deployedAt = Date.now();
     this.log(`Deployed part: ${partId}`);
   }

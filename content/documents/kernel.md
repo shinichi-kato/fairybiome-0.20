@@ -22,6 +22,7 @@ partは`src/biomebot/kernel.ts`から必要に応じて**遅延ロード**（動
 2. `/static/bots/{botName}`下に存在するjsonファイルを認識
 3. 指定されたボットの`botName`に紐づく`BroadcastChannel`を初期化: `biomebot-${botName}`
 4. 各部品からの応答メッセージをリッスン開始
+5. OrchestratorPartをactivate。指定された{botName}ディレクトリにある
 
 
 ## 通信仕様（共通）
@@ -45,6 +46,7 @@ partは`src/biomebot/kernel.ts`から必要に応じて**遅延ロード**（動
 
 
 ## kernelのサービス
+
 
 ### activate
 カーネルが対象部品を起動し、メッセージ受信可能状態にする。
@@ -147,37 +149,16 @@ partは`src/biomebot/kernel.ts`から必要に応じて**遅延ロード**（動
 }
 ```
 
+## deployの詳細
+deployでは指定されたパートのWeb Workerをインスタンス化する。
 
-### listen
-UIや環境からユーザーメッセージを受け取り、指定ボットのアクティブな部品へ配信する。
-
-**リクエストメッセージ**:
-```javascript
-{
-    type: 'listen',
-    botName: 'チャットボット名',
-    message: {
-        text: 'ユーザー入力テキスト',
-        role: 'user',
-        // その他メッセージ属性
-    }
-}
-```
-
-**処理フロー**:
-1. メッセージをボット単位のキューに蓄積
-2. 蓄積されたメッセージを一括でボットのBroadcastChannelに配信:
-   ```javascript
-   {
-       type: 'message',
-       botName: 'チャットボット名',
-       messages: [
-           { text: '...', role: 'user', ... },
-           { text: '...', role: 'user', ... }
-       ]
-   }
-   ```
-3. アクティブな部品がメッセージを受け取り処理開始
+/staticのファイル名により起動するパートworkerを変える。
+| ファイル名        | 起動するwebworker       |
+|-------------------|-------------------------|
+| *.episode.json    | EpisodePartWorker       |
+| orchestrator.json | OrchestratorPartWorker  |
+| *.concept.json    | ConceptPartWorker(未実装)
+全てのworkerはpartクラスを継承したクラスで、worker channelの通信仕様は統一されている。
 
 
 ## マルチボット対応

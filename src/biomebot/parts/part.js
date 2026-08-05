@@ -1,16 +1,21 @@
 export class Part {
 
-  constructor(botName, partName) {
-    const channelName = botName ? `biomebot-${botName}` : 'biomebot';
-    this._broadcastChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(channelName) : null;
-    this.botName = botName;
-    this.partName = partName;
+  constructor() {
+    this.botName = "";
+    this.partName = "";
     this.isActive = false;
-    this.state = "starting";
+    this.status = "blank";
     this._pendingMessages = [];
     this.engineName = "";
     this.engine = null;
+    this._broadcastChannel = new this.broadcastChannel(`biomebot-${botName}`);
+  }
 
+  init(botName,partName){
+    this.botName = botName;
+    this.partName = partName;
+    this.isActive = false;
+    this.status = "idle"
   }
 
   async deploy() {
@@ -19,22 +24,22 @@ export class Part {
 
   activate() {
     const engineCheck=this._checkEngine();
-    if(engineCheck.state !== "ok"){
+    if(engineCheck.status !== "ok"){
       return engineCheck;
     }
     
     this.isActive = true;
-    return { state: "ok" }
+    return { status: "ok" }
   }
 
   deactivate() {
     const engineCheck=this._checkEngine();
-    if(engineCheck.state !== "ok"){
+    if(engineCheck.status !== "ok"){
       return engineCheck;
     }
     
     this.isActive = false;
-    return { state: "ok" }
+    return { status: "ok" }
   }
 
   report() {
@@ -43,10 +48,10 @@ export class Part {
 
   _checkEngine() {
     if (this.engineName === "") {
-      return { state: "error", message: "engineが未指定です" }
+      return { status: "error", message: "engineが未指定です" }
     }
     if (!this.engine) {
-      return { state: "error", message: "engineが起動していません" }
+      return { status: "error", message: "engineが起動していません" }
     }
   }
 

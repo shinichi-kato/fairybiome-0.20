@@ -15,7 +15,10 @@ describe('EpisodeStorage.readWordTags', () => {
   });
 
   it('loads all tag JSON files under tags/ when deployFromJson is used', async () => {
-    process.env.NEXT_PUBLIC_STATIC_FILES = JSON.stringify(['tags/alpha.json', 'tags/beta.json', 'docs/ignore.json']);
+    process.env.NEXT_PUBLIC_STATIC_FILES = JSON.stringify({
+      bots: {},
+      wordTags: ['tags/alpha.json', 'tags/beta.json', 'docs/ignore.json']
+    });
     global.fetch
       .mockResolvedValueOnce({ ok: true, json: async () => [{ surfaces: ['A'], embedding: { A: 1.0 } }] })
       .mockResolvedValueOnce({ ok: true, json: async () => [{ surfaces: ['B'], embedding: { B: 1.0 } }] });

@@ -524,11 +524,15 @@ export class EpisodeStorage {
       return;
     }
 
-    if (!Array.isArray(staticFiles)) {
+    const tagEntries = Array.isArray(staticFiles)
+      ? staticFiles
+      : (staticFiles && typeof staticFiles === 'object' && !Array.isArray(staticFiles) ? staticFiles.wordTags : null);
+
+    if (!Array.isArray(tagEntries)) {
       return;
     }
 
-    for (const entry of staticFiles) {
+    for (const entry of tagEntries) {
       if (typeof entry !== 'string') {
         continue;
       }

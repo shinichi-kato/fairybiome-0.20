@@ -13,26 +13,16 @@ export class OrchestratorPart extends Part {
     this._pendingMessages = [];
   }
 
-  addEventListener(type, listener) {
-    if (!this.listeners.has(type)) {
-      this.listeners.set(type, []);
-    }
-    this.listeners.get(type).push(listener);
+  init(botName, firestoreToken = null) {
+    this.botName = botName;
+    this.firestoreToken = firestoreToken;
+    this.state = 'starting';
   }
 
-  removeEventListener(type, listener) {
-    const list = this.listeners.get(type) ?? [];
-    this.listeners.set(type, list.filter((entry) => entry !== listener));
+  async deploy0(botName, firestoreToken = null) {
+    
   }
-
-  dispatchEvent(type, detail) {
-    const list = this.listeners.get(type) ?? [];
-    for (const listener of list) {
-      listener({ detail });
-    }
-  }
-
-  async deploy(botName, firestoreToken) {
+  async deploy(botName, firestoreToken = null) {
     this.botName = botName;
     this.firestoreToken = firestoreToken;
     this.state = 'starting';
