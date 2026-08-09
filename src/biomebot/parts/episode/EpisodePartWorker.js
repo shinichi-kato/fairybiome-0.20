@@ -1,7 +1,11 @@
 /*
  EpisodePartWorker
 ===================
- EpisodePartをweb worker化するラッパー
+ EpisodePartをworker化するラッパー。
+ EpisodePartはプロセス管理用に自分のメッセージングチャンネルを使用し、
+ 会話用にbroadcastチャンネルを使用する。それらのpostMessage/onmessageは
+ 全てEpisodePartWorkerに集約する。worker部分とロジックを明確に分ける
+ ことで、ロジック側ののテストと デバッグが容易になり、 通信経路が明確化する。
 */
 
 import EpisodePart from './EpisodePart';

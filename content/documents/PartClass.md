@@ -4,6 +4,8 @@ Part class
 ## データの読み込み
 各パートのデータはstaticディレクトリから読み込む固定データとサーバーのDBから読み込む学習データ
 
+
+
 ## part管理の通信(workerの仕様)
 workerのmessagingチャンネルを使用
 ### deploy (kernel -> part)

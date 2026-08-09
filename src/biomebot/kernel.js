@@ -1,3 +1,18 @@
+/*
+Biomebot Kernel
+===============
+使用法:
+```
+const botPaths = $ENV.NEXT_PUBLIC_STATIC_FILES.bots[botName];
+const biomebot = new Biomebot(botPaths);
+biomebot.replyCallbackFunction = (botName, message) => {
+  // handle output from bot
+};
+
+await biomebot.activate({ botName, partNames: ["orchestrator"] });
+await biomebot.input(botName, message);
+```
+*/
 export class Biomebot {
   /*
   botPaths = {[botName]:[partPaths],...}というmapを渡す
@@ -9,7 +24,11 @@ export class Biomebot {
     this.bots = this._generateBots(this.botPaths);
     this.parts = initializeParts(this.bots); //{partName: {state, worker}}
     this.botStates = initializeBotStates(this.bots);
+    this.replyCallbackFunction = null;
+    this.broadcastChannels = new Map();
   }
+
+
 
   /*
     botPath={[botName]:[paths]}から
@@ -62,8 +81,32 @@ export class Biomebot {
     }
     return botStates;
   }
+  /* ------------------------------------------------------
 
-  /*
+  UIとの通信
+  UIおよび環境からbiomebotにmessageを送る：input(message)
+  biomebotからUIにmessageを送る: replyCallbackFunctionを設定
+
+  ----------------------------------------------------------
+  */
+  async input(botName, message) {
+    if(this.broadcastChannels.has(botName)){
+      const channel = this.broadcastChannels.get(botName);
+      channel.postMessage({ type: 'input', message });
+    } else {
+      throw new Error(`${botName} not deployed`);
+    }
+  }
+  set replyCallbackFunction(func) {
+    this._replyCallbackFunction = func;
+  }
+
+  /*　------------------------------------------------------
+  
+  partとの通信
+
+  ----------------------------------------------------------
+  
   partNamesに指定されたパートを有効化する。
   excludePartNamesに指定されたパートは有効化も無効化もしない。
   どちらも指定されなければ、botNameに紐づく全てのパートを有効化する。
@@ -98,6 +141,7 @@ export class Biomebot {
         // Deploy if not deployed
         if (part.state === 'idle') {
           await this._deployPart(botName, partName);
+          this.broadcastChannels.set(botName, new BroadcastChannel(`biomebot-${botName}`));
         }
 
         // Send activate message and wait for response with timeout
@@ -372,7 +416,7 @@ export class Biomebot {
             // Handle report response if needed
             break;
           case 'activate':
-            // orchestraotor part activation request
+            // activation request by orchestraotor part  
             this.activate({
               botName: event.botName,
               partNames: event.partNames,
@@ -380,13 +424,19 @@ export class Biomebot {
             });
             break;
           case 'deactivate':
-            // orchestraotor part deactivation request
+            // deactivation request by orchestraotor part
             this.deactivate({
               botName: event.botName,
               partNames: event.partNames,
               excludedPartNames: event.excludedPartNames
             });
             break;
+          case 'output': {
+            // output request by orchestraotor part
+            this._replyCallbackFunction?.(
+              event.botName, event.message);
+            break;
+          }
           default:
             this.log(`Unknown message type from part ${partName}: ${event.type}`);
         }
