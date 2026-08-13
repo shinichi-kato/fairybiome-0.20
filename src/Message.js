@@ -29,9 +29,14 @@ self=独り言、other=誰かに向けた言葉
 */
 
 export class Message {
-    constructor(){
+    constructor(obj){
+        if (obj){
+            this.copy(obj);
+            return;
+        }
         this.role= "";
         this.text= "";
+        this.target = "";
         this.timestamp= new Date();
         this.emo= "";
         this.facing= "";
@@ -42,7 +47,28 @@ export class Message {
         this.props = {
             score: 0,
             botName: "",
-            partName: ""
+            partNames: [],
         }       
+    }
+
+    copy(other){
+        this.role= other.role;
+        this.text= other.text;
+        this.target = other.target;
+        this.timestamp= new Date(other.timestamp);
+        this.emo= other.emo;
+        this.facing= other.facing;
+        this.location= other.location;
+        this.ecoState=other.ecoState;
+        this.displayName=other.displayName;
+        this.backgroundColor=other.backgroundColor;
+
+        const props = other.props ?? {};
+        this.props = {
+            ...props,
+            botName: props.botName ?? "",
+            score: props.score ?? 0,
+            partNames: Array.isArray(props.partNames) ? [...props.partNames] : [],
+        };
     }
 }

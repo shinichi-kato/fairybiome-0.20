@@ -1,7 +1,7 @@
-OrchestratorPart
+StageOrchestratorPart
 ================
 * チャットボットの未登場↔登場という状態管理を行い、他のpartの状態をkernelを介して制御する。
-* パートから受け取ったメッセージを蓄積し、定期的にそれらを統合、タグのdecodeを行って返答をUIに返す
+* パートから受け取ったメッセージを蓄積し、定期的にそれらを統合,返答をUIに返す
 
 orchestrator.jsonには以下の内容を格納する
 ```json

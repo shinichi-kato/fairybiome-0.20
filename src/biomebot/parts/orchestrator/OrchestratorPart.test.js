@@ -1,32 +1,48 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Part } from '../part.js';
+
 import { OrchestratorPart } from './OrchestratorPart.js';
+import { Message } from '../../../Message.js';
 
 describe('OrchestratorPart', () => {
-  it('inherits from the shared Part base class', () => {
-    const part = new OrchestratorPart({ isWorker: false });
+  it('returns an empty output when there are no inner speech candidates', () => {
+    const part = new OrchestratorPart();
 
-    expect(part).toBeInstanceOf(Part);
-    expect(typeof part.activate).toBe('function');
+    const result = part.integrate();
+
+    expect(result).toMatchObject({
+      type: 'output',
+      message: null,
+      props: { partNames: [] },
+    });
   });
 
-  it('transitions from standBy to deploy when a start token is returned', async () => {
-    const orchestrator = {
-      deployNotOnStage: vi.fn().mockResolvedValue({ state: 'standBy' }),
-      deployNotFound: vi.fn().mockResolvedValue({ state: 'ready' }),
-      retrieveNotOnStage: vi.fn().mockReturnValue({ text: 'はーい{START}', role: 'bot' }),
-      reply: vi.fn().mockReturnValue({ text: 'ok', role: 'bot', score: 0.9 }),
-    };
+  it('prefers the stronger self message and merges part names when both self and other exist', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
 
-    const part = new OrchestratorPart({ orchestrator, isWorker: false });
-    const events = [];
-    part.addEventListener('reply', (event) => events.push(event.detail));
+    const part = new OrchestratorPart();
+    part.innerSpeechPool = [
+      new Message({
+        role: 'bot',
+        text: 'other message',
+        target: 'other',
+        emo: 'neutral',
+        props: { score: 8, partNames: ['episode'], botName: 'demo' },
+      }),
+      new Message({
+        role: 'bot',
+        text: 'self message',
+        target: 'self',
+        emo: 'happy',
+        props: { score: 10, partNames: ['orchestrator'], botName: 'demo' },
+      }),
+    ];
 
-    await part.deploy('demo-bot', 'token');
-    const reply = part.receive({ text: 'おーい' });
+    const result = part.integrate();
 
-    expect(part.state).toBe('deploy');
-    expect(reply.text).toBe('はーい');
-    expect(events[0].text).toBe('はーい');
+    expect(result.message.text).toBe('other message');
+    expect(result.message.emo).toBe('happy');
+    expect(result.props.partNames).toEqual(expect.arrayContaining(['episode', 'orchestrator']));
+
+    vi.restoreAllMocks();
   });
 });

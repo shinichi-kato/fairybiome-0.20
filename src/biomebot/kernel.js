@@ -19,8 +19,18 @@ await biomebot.input(botName, message);
   タグ化し、全パートにbroadcastする。
 * パート管理（activate/deactivate/report)
 * パートから生成されたoutputを受取り、タグをdecodeしてUIに返す。
+* messageをpartに配信したら、outputが送られてくるまで次の
+  messageは投入しない。output待機中に次のmessageを受け取ったら
+  this.inputQueueに蓄積し、outputが解除されたらqueueに残ったmessageをpartに
+  配信する。
 
 */
+const workerRoot="/src/biomebot/parts";
+const workerURL = {
+  "episode": `${workerRoot}/episode/EpisodePart.worker.js`,
+  "orchestator": `${workerRoot}/orchestrator/OrcehstratorPart.worker.js`,
+  "stageOrchestrator": `${workerRoot}/orchestrator/StageOrchestratorPart.worker.js`,
+}
 
 export class Biomebot {
   /*
@@ -30,14 +40,15 @@ export class Biomebot {
     this.timeout = options.timeout ?? 3000;
     this.log = [];
     this.staticPaths = { ...paths };
-    this.botPaths = null;
+    this.botPartMap = null;
     this.tagPaths = {};
 
     this._generatePathDict(this.staticPaths);
-    this.parts = initializeParts(this.botPaths); //{partName: {state, worker}}
-    this.botStates = initializeBotStates(this.botPaths);
+    this.parts = initializeParts(this.botPartMap); //{partName: {state, worker}}
+    this.botStates = initializeBotStates(this.botPartMap);
     this.replyCallbackFunction = null;
     this.broadcastChannels = new Map();
+    this.inputQueue = {};
     this.tags = {}
   }
 
@@ -51,19 +62,20 @@ export class Biomebot {
   
     * パス末尾の'json'を拡張子、その前の'episode'の部分をsuffixと呼ぶ
   
-    1. this.bots={[botName]:{partName: path,...}}を生成。
+    1. this.bots={[botName]:[partName,...],...}を生成。
       - partNameは"greeting.episode"のようにファイル名から末尾の".json"を
         除去したもの。
-      - partとして有効なのはsuffixがorchestrator, onceptのいずれか
+      - partとして有効なのはsuffixが
+        orchestrator, stageOrchestrator, episode, conceptのいずれか
   
     2. this.tags={[botName]:[path,...]}を生成。
      効なのはsuffixが'tags'であるもの
   */
   _generatePathDict(botPaths) {
-    const validParts = ['episode', 'concept', 'orchestrator'];
+    const validParts = ['episode', 'concept', 'orchestrator','stageOrchestrator'];
 
     for (const botName in botPaths) {
-      this.botPaths[botName] = {};
+      this.botPartMap[botName] = [];
       this.tagPaths[botName] = [];
 
       const targets = botPaths[botName].filter(path =>
@@ -77,7 +89,7 @@ export class Biomebot {
         const suffix = partName.split('.').pop();
 
         if (validParts.includes(suffix)) {
-          this.botPaths[botName][partName] = path;
+          this.botPartMap[botName].push(partName);
         }
 
         if (suffix === 'tags') {
@@ -109,12 +121,33 @@ export class Biomebot {
   initializeBotStates(bots) {
     const botStates = {};
     for (const botName in bots) {
-      botStates[botName] = {};
+      botStates[botName] = {
+        null: {
+          isWaitingForOutput: false,
+          inputQueue: [],
+        },
+      };
       for (const partName in bots[botName]) {
         botStates[botName][partName] = 'idle';
       }
     }
     return botStates;
+  }
+
+  _ensureInputState(botName) {
+    const botState = this.botStates?.[botName];
+    if (!botState) {
+      return null;
+    }
+
+    if (!botState[null]) {
+      botState[null] = {
+        isWaitingForOutput: false,
+        inputQueue: [],
+      };
+    }
+
+    return botState[null];
   }
   /* ------------------------------------------------------
 
@@ -125,13 +158,54 @@ export class Biomebot {
   ----------------------------------------------------------
   */
   async input(botName, message) {
+    // inputされたメッセージをpartに配信したら、partからoutputが
+    // 送られてくるまで次のinputをpartに送らない。
+    const globalState = this._ensureInputState(botName);
+    if (!globalState) {
+      throw new Error(`${botName} is not initialized`);
+    }
+
+    if (globalState.isWaitingForOutput) {
+      globalState.inputQueue.push(message);
+      return;
+    }
+
+    globalState.isWaitingForOutput = true;
+
     if (this.broadcastChannels.has(botName)) {
       const channel = this.broadcastChannels.get(botName);
       channel.postMessage({ 
         type: 'input', 
         message: this._encodeTags(botName, message) });
     } else {
+      globalState.isWaitingForOutput = false;
       throw new Error(`${botName} not deployed`);
+    }
+  }
+
+  _flushInputQueue(botName) {
+    const globalState = this._ensureInputState(botName);
+    if (!globalState) {
+      return;
+    }
+
+    const { inputQueue, isWaitingForOutput } = globalState;
+    if (isWaitingForOutput || inputQueue.length === 0) {
+      return;
+    }
+
+    const next = inputQueue.shift();
+    if (!next) {
+      return;
+    }
+
+    if (this.broadcastChannels.has(botName)) {
+      const channel = this.broadcastChannels.get(botName);
+      channel.postMessage({
+        type: 'input',
+        message: this._encodeTags(botName, next),
+      });
+      globalState.isWaitingForOutput = true;
     }
   }
   set replyCallbackFunction(func) {
@@ -151,12 +225,12 @@ export class Biomebot {
   async activate(request) {
     const { botName, partNames, excludedPartNames } = request;
 
-    if (!(botName in this.botPaths)) {
+    if (!(botName in this.botPartMap)) {
       throw new Error(`invalid botName ${botName}`);
     }
     const botState = this.botStates[botName];
     const targetPartNames = partNames.filter(
-      partName => { !excludedPartNames.includes(partName) && partName in this.botPaths[botName] });
+      partName => { !excludedPartNames.includes(partName) && partName in this.botPartMap[botName] });
     // Process all parts in parallel
     const promises = targetPartNames.map(async (partName) => {
       const partId = `${botName}:${partName}`;
@@ -228,7 +302,7 @@ export class Biomebot {
   async deactivate(request) {
     const { botName, partNames, excludedPartNames } = request;
 
-    if (!(botName in this.botPaths)) {
+    if (!(botName in this.botPartMap)) {
       throw new Error(`invalid botName ${botName}`);
     }
 
@@ -236,7 +310,7 @@ export class Biomebot {
     const failedParts = [];
     const botState = this.botStates[botName];
     const targetPartNames = partNames.filter(
-      partName => { !excludedPartNames.includes(partName) && partName in this.botPaths[botName] });
+      partName => { !excludedPartNames.includes(partName) && partName in this.botPartMap[botName] });
 
     const promises = targetPartNames.map(async (partName) => {
       const partId = `${botName}:${partName}`;
@@ -295,7 +369,7 @@ export class Biomebot {
     const { botName, partNames } = request;
     this.log(`Reporting bot: ${botName}, parts: ${partNames?.join(',') ?? 'all'}`);
 
-    const botState = this.botPaths.get(botName);
+    const botState = this.botPartMap.get(botName);
     if (!botState) {
       return {
         type: 'reportCompleted',
@@ -376,10 +450,10 @@ export class Biomebot {
     });
 
     // Clear bot state
-    const botState = this.botPaths.get(botName);
+    const botState = this.botPartMap.get(botName);
     if (botState) {
       botState.parts.clear();
-      this.botPaths.delete(botName);
+      this.botPartMap.delete(botName);
     }
 
     // Clear part cache for this bot and close workerChannels
@@ -425,8 +499,10 @@ export class Biomebot {
       throw new Error(`Part ${partName} not found for bot ${botName}`);
     }
     if (part.state === 'blank') {
-      const partPath = this.botPaths[botName][partName];
-      const worker = new Worker(partPath);
+      const jsonPath = this.botPartMap[botName][partName];
+      const botType = partName.split('.').pop();
+      const worker = new Worker(workerURL[botType]);
+
       part.worker = worker;
       part.state = 'deploying';
       part.deployedAt = Date.now();
@@ -470,13 +546,21 @@ export class Biomebot {
             });
             break;
           case 'output': {
-            // output request by orchestraotor part
+            // orchestrator only emits final output; other parts emit innerSpeech.
+            const botName = event.botName;
+            const botState = this.botStates?.[botName];
+            if (botState?.[null]) {
+              botState[null].isWaitingForOutput = false;
+            }
+
             const m = {
               ...event.message,
-              text: this._decodeTags(event.message.text)
+              text: this._decodeTags(event.botName, event.message?.text ?? '')
             }
             this._replyCallbackFunction?.(
               event.botName, m);
+
+            this._flushInputQueue(botName);
             break;
           }
           default:

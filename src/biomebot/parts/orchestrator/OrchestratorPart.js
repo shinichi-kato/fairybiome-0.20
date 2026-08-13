@@ -1,30 +1,30 @@
-import { type } from 'node:os';
+/*
+OrchestratorPart
+================
+* パートから受け取ったメッセージを蓄積し、定期的にそれらを統合し
+  UIに返す。
+
+
+*/
+
 import { Part } from '../part.js';
+import { Message } from '../../../Message.js';
 
 export class OrchestratorPart extends Part {
   constructor() {
-    this.botName = "";
-    this.partName = "";
-    this.state = "starting";
-    this.firestoreToken = null;
-    this.engineName = "orchestrator";
-    this.messages = [];
-    this.worker = null;
-    this.broadcastChannel = null;
+    super();
+    this.innerSpeechPool = [];
+    this.inputQueue = [];
   }
 
-  init(botName, partName, worker,boradcastChannel, firestoreToken = null) {
+  async init(botName, partName, worker, broadcastChannel, firestoreToken = null) {
     this.botName = botName;
     this.partName = partName;
-    this.firestoreToken = firestoreToken;
-    this.state = "starting";
     this.worker = worker;
-    this.broadcastChannel = boradcastChannel;
-  }
+    this.broadcastChannel = broadcastChannel;
+    this.firestoreToken = firestoreToken;
 
-  // Orchestratorのdeploy
-  async deploy() {
-    const path = `static/bots/${this.botName}/${this.partName}.json`;
+    const path = `static/bots/${botName}/${partName}.json`;
     let response;
 
     try {
@@ -46,70 +46,100 @@ export class OrchestratorPart extends Part {
       console.warn(`failed to parse JSON in "${path}"`, err);
       return;
     }
-    this.factor = data?.factor ?? { intervals: [300, 200, 250], attenuation: 0.7 };
-    this.botDisplayName = data?.botDisplayName ?? this.botName;
-    this.deploy0();
-    return
+    const factor = data?.factor ?? {};
+    const intervals = factor.intervals_msec ?? [300];
+    this.factor = { ...factor, intervals_msec: intervals };
+    return true;
+  }
+  deploy() {
+
   }
 
-  report() {
-
+  /*
+  ポーリング中に受信した他のpartからのinnerSpeechを蓄積
+  */
+  receiveInnerSpeech(message) {
+    this.innerSpeechPool.push(new Message(message));
   }
 
-  // チャットボットの未登場<-> 登場状態管理
-  deploy0() {
-    this.worker.postMessage({ type: "deactivate", excludedPartNames: ["orchestrator"] });
-    this.worker.postMessage({ type: "activate", partNames: ["offstage.episode"] });
-    this.state = "polling0";
-  }
-
-  polling0() {
-    const interv = this.factor.intervals[Math.floor(Math.random() * this.factor.intervals.length)];
-    setTimeout(() => {
-      this.integrate0();
-    }, interv);
-  }
-
-  // 受け取ったメッセージを常に蓄積
-  acceptMessage(message) {
-    this.messages.push(message);
-  }
-
-  integrate0() {
-    if (this.messages.length === 0) {
-      this.polling0();
-      return;
+  polling() {
+    const intervals = this.factor?.intervals_msec;
+    if (!intervals.length) {
+      return null;
     }
-    
-    // {ONSTAGE}という文字列があったら削除して出力し
-    // deploy1に遷移
-    for(let m of this.messages){
-      
+
+    const interv = intervals[Math.floor(Math.random() * intervals.length)];
+
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const output = this.integrate();
+        resolve(output);
+      }, interv);
+    });
+  }
+
+  integrate() {
+    const otherCandidates = this.innerSpeechPool
+      .filter((message) => message.target === 'other')
+      .sort((a, b) => (b.props?.score ?? 0) - (a.props?.score ?? 0))
+      .slice(0, 3);
+
+    const selfCandidates = this.innerSpeechPool
+      .filter((message) => message.target === 'self')
+      .sort((a, b) => (b.props?.score ?? 0) - (a.props?.score ?? 0))
+      .slice(0, 3);
+
+    const chosenOther = otherCandidates[0] ?? null;
+    const chosenSelf = selfCandidates[0] ?? null;
+
+    const output = this._buildOutput(chosenOther, chosenSelf);
+
+    this.innerSpeechPool = [];
+    this.inputQueue = [];
+
+    return output;
+  }
+
+  _buildOutput(chosenOther, chosenSelf) {
+    if (!chosenOther && !chosenSelf) {
+      return {
+        type: 'output',
+        message: null,
+        props: {
+          partNames: [],
+        },
+      };
     }
-    
-  }
 
-  deploy1(){
-    this.worker.postMessage({ type: "deactivate", excludedPartNames: ["orchestrator"] });
-    this.worker.postMessage({ type: "activate", partNames: ["offstage.episode"] });
-    this.state = "polling1";
-  }
+    const otherScore = chosenOther?.props?.score ?? 0;
+    const selfScore = chosenSelf?.props?.score ?? 0;
 
-  polling1() {
-    const interv = this.factor.intervals[Math.floor(Math.random() * this.factor.intervals.length)];
-    setTimeout(() => {
-      this.integrate1();
-    }, interv);
-  }
+    const selectedOther = chosenOther ?? null;
+    const selectedSelf = chosenSelf ?? null;
 
-  integrate1() {
-    // メッセージ中のscoreを比べ、最も大きいものを採用。
-    // this.messagesを空にする
-    if (this.messages.length === 0) {
-      this.polling1();
-      return;
+    const message = selectedOther ? new Message(selectedOther) : (selectedSelf ? new Message(selectedSelf) : null);
+    const allPartNames = [...new Set([
+      ...(selectedOther?.props?.partNames ?? []),
+      ...(selectedSelf?.props?.partNames ?? []),
+    ])];
+
+    if (message && selectedOther && selectedSelf && selfScore > otherScore) {
+      message.emo = selectedSelf.emo;
     }
-    // {OFFSTAGE}という文字列があったらdeploy0に遷移
-  }
 
+    if (message) {
+      message.props = {
+        ...message.props,
+        partNames: allPartNames,
+      };
+    }
+
+    return {
+      type: 'output',
+      message,
+      props: {
+        partNames: allPartNames,
+      },
+    };
+  }
 }

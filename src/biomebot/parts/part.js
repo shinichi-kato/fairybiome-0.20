@@ -8,7 +8,8 @@ export class Part {
     this._pendingMessages = [];
     this.engineName = "";
     this.engine = null;
-    this._broadcastChannel = new this.broadcastChannel(`biomebot-${botName}`);
+    this.broadcastChannel = null;
+    this._broadcastChannel = null;
   }
 
   init(botName,partName){
