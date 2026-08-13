@@ -1,3 +1,6 @@
+// * dateなどの特徴量は正しく計算が実装されているか？
+// * ハイパーパラメータの取り扱いが見つからない
+
 import Dexie from 'dexie';
 import { TinySegmenter } from '../../_legacy/biomebot-021/tinysegmenter.js';
 
@@ -1104,6 +1107,10 @@ export function validateData(data) {
         } else if (columnName === 'text') {
           if (typeof value !== 'string' || !value.trim().length) {
             errors.push(`data[${rowIdx}][${colIdx}] text must be a non-empty string`);
+          }
+        } else if (columnName === 'target') {
+          if (typeof value !== 'string' || !value.trim().length) {
+            errors.push(`data[${rowIdx}][${colIdx}] target must be a non-empty string`);
           }
         } else if (columnName === 'date') {
           if (!isValidDate(value)) {

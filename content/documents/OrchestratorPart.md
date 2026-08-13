@@ -1,7 +1,7 @@
 OrchestratorPart
 ================
 * チャットボットの未登場↔登場という状態管理を行い、他のpartの状態をkernelを介して制御する。
-* パートから受け取ったメッセージを蓄積し、定期的にそれらを統合して返答を返す
+* パートから受け取ったメッセージを蓄積し、定期的にそれらを統合、タグのdecodeを行って返答をUIに返す
 
 orchestrator.jsonには以下の内容を格納する
 ```json
@@ -23,7 +23,7 @@ sequenceDiagram
 participant Outer@{"type": "boundary" }
 participant Kernel
 participant PartWorkers@{ "type" : "collections" }
-    Outer->>Kernel: post()
+    Outer->>Kernel: send()
     Kernel-)PartWorkers: input
     PartWorkers-)PartWorkers: innerSpeech
     PartWorkers-)OrchestratorWorker: innerSpeech
@@ -35,29 +35,50 @@ participant PartWorkers@{ "type" : "collections" }
 Orchestratorは一定期間中のinnerSpeechを受信し、統合して `{type:"output"}`とする。これをうけとったkernelはコールバック関数でこれをUIに渡す。
 
 ### innerSpeech
+endologue -> {target: "self"} 
+exologue -> {target: "other"}
 biomebotでは様々なpartがまず内言のかたちで各々発言し、それらをまとめて外言としてoutputする。ここで人間における発言のメカニズムを大雑把に捉えると、まず内言がいくつか行われ、それらを統合して外言として出力すると思われる。
 また内言は
 * 他者に聞かせるつもりはない「内向きの内言」(endologue:造語)
 * 他者に聞かせる候補として考えた「外向きの内言」(exologue:造語)
 に分けられ、それらが統合されて「外言」として発話される。
-チャットボットの会話例では通常外言だけを記述するが、biomebotでは行頭に"> "を書くことで内向き内言を記述しても良い。
+チャットボットの会話例では通常外言だけを記述するが、biomebotでは内向き内言も記述することで、言外の文脈に沿った会話を目指す。
+下記では文頭に'> 'を記述した行を内向きの内言とする。
 ```
 bot > 天気が悪いと出かけるのは嫌だな・・・
 bot えーっと、少し考えます
 ```
 #### 機械学習
-endologueの内容はexologueと同様にコンテキストとして畳み込まれる。
+* endologueの内容はexologueと同様にコンテキストとして畳み込まれる。
+* .episode.jsonなどの会話辞書中では発話されたendologueをtarget:selfとして、発話されたexologueをtarget:otherとして記載する。
 
 #### 発言機序
+```mermaid
+stateDiagram-v2
+    input --> calc
+    calc --> endologue
+    calc --> exologue
+    calc --> silence
+    endologue --> recalc
+    recalc --> re_endologue: activity role
+    recalc --> re_exologue
+    exologue --> recalc2
+    recalc2 --> re_endologue: activity role
+    recalc2 --> re_exologue: activity role
+```
 partの発言機序
-* partはendologueを送信することにしたら、それを入力としてもう一度発言する。それにより外言を送信する可能性が高くなる。
-* partは内言を受信したらそれを記憶し、次の発言を考慮するコンテキストとして扱う。
-* partはendologueを受信したら
-* partはexologueを受信したら
+* partはinputを受信したら可能な場合返答を生成する。その結果endologueを送信することにしたらその後で、それを入力としてもう一度発言する。それにより外言を送信する可能性が高くなる。
+* partは内言または外言を受信したらそれを記憶し、次の発言を考慮するコンテキストとして扱う。
+* partが受信した内言がendologueだった場合,activityロールが成功したら発話する。
+* partが受信した内言がexologueだった場合
+* partが受信したのが外言だった場合
 
-統合の方法
-exologueがあればスコアの上位3位から一つをランダムに選ぶ
-endologueのみの場合、endologueのスコア上位3位から一つをランダムに選ぶ。
+orchestratorでの統合の方法
+* orchestratorはinputが発生したら所定時間待機してpartからの返答を集める。
+
+* exologueがあればスコアの上位3位から一つをランダムに選ぶ
+* このときendologueのほうがスコアが大であれば、表情はendologueのものに置き換える。
+* endologueのみの場合、endologueのスコア上位3位から一つをランダムに選ぶ。
 
 partの中には発言内容を生成AIに委ねる場合があるが、その際は内言を全て渡すことでより心理的コンテキストに沿った発話ができると思われる。
 

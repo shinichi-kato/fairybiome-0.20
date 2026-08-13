@@ -1,0 +1,9 @@
+{
+    "description": "Orchestrator",
+    "factor": {
+        "intervals": [300,200,250],
+        "attenuation": 0.7
+    }
+
+ 
+}

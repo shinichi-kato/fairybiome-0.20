@@ -124,30 +124,21 @@ readStaticは該当したjsonをfetchしてthis.staticSourceにそのまま格�
   ],
   "factor": {
     "activity": 0.6,
-    "precision": 0.4
+    "precision": 0.4,
+    "intensity": 1.0
   },
   "timestamp": null,
-  "columns": ["role", "text", "date", "time", "emo", "facing", "location"],
+  "columns": ["role", "text", "target", "date", "time", "emo", "facing", "location"],
   "data": [
     "# 文字列はコメント行かつ話題の区切り",
-    ["bot", "こんにちは", "10/12", "12:23", "laugh", "face", "private"],
-    ["user", "今日はどう？", "10/12", "12:24", "", "face", "private"],
+    ["bot", "こんにちは", "other", "10/12", "12:23", "laugh", "face", "private"],
+    ["user", "今日はどう？", "other", "10/12", "12:24", "", "face", "private"],
     null,
-    ["bot", "元気ですよ。", "10/12", "12:25", "happy", "face", "private"]
+    ["bot", "元気ですよ。", "other", "10/12", "12:25", "happy", "face", "private"]
   ]
 }
 ```
 tag中に"{user}","{bot}"にembeddingされるタグを記載しておく。"{user}","{bot}"はそれぞれこの会話ログが記録されたときのユーザとチャットボットの名前を示す。
-sectionNameが指定された場合は
-```javascript
-{ [sectionName]: {
-    "tag": [],
-    "columns": [],
-    "factor": [],
-    "data": []
-}}
-```
-のように[sectionName]内に記述された内容を使用する。
 またthis.staticSource.timestampはfetchしたファイルのtimestampで上書きする。
 
 ### readLearned
@@ -193,11 +184,12 @@ db.cache.timestampよりも新しい場合、両方のデータを用いて以�
         "embedding": {"{you}": 1.0}
         }
     ],
-    columns: ["role","text","date","time","emo","facing","location"]の中から一つ以上が選ばれていること
+    columns: ["role","text","target","date","time","emo","facing","location"]の中から一つ以上が選ばれていること
     data: 行データの配列。行データはcolumnsで定義された順に値を並べた配列。columnsごとに以下の定義に従う。
     {
         "role": "user" | "bot" | "eco",
         "text": string,
+        "target": "self" | "other",
         "date": 1/1 ~ 12/31,
         "time": 0:00~23:59
         "emo": "joy" | "trust" | "fear" | "surprise" | "sadness" | "disgust"| " anger" | "anticipation",

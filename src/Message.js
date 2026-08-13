@@ -2,12 +2,14 @@
 Messageクラス
 =============
 ## role: string
-- "user" | "bot-endo" | "bot-exo" | "cue"
-bot-endo: botの独り言
-bot-exo: botの普通の発言
+- "user" | "bot" | "cue"
 
 ## text: string
 - メッセージ本文
+
+## target: string
+- "self" | "other" 　
+self=独り言、other=誰かに向けた言葉
 
 ## date: string
 - Dateオブジェクト
@@ -16,10 +18,11 @@ bot-exo: botの普通の発言
 - "happy" | "sad" | "angry" | "surprised" | "neutral"
 
 ## facing: string
-- "face" | "away"
+- "personal" | "face" | "away"
 
 ## location: string
 - "private" | "public"
+
 
 ## score: number
 類似度

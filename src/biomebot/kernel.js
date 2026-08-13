@@ -12,43 +12,78 @@ biomebot.replyCallbackFunction = (botName, message) => {
 await biomebot.activate({ botName, partNames: ["orchestrator"] });
 await biomebot.input(botName, message);
 ```
+
+## 概要
+* UIからinput()関数を利用してユーザ発言や環境の情報を受け取る。
+* 受け取ったメッセージに含まれるユーザ名やチャットボットの名称を
+  タグ化し、全パートにbroadcastする。
+* パート管理（activate/deactivate/report)
+* パートから生成されたoutputを受取り、タグをdecodeしてUIに返す。
+
 */
+
 export class Biomebot {
   /*
   botPaths = {[botName]:[partPaths],...}というmapを渡す
   */
-  constructor(botPaths) {
+  constructor(paths) {
     this.timeout = options.timeout ?? 3000;
     this.log = [];
-    this.botPaths = { ...botPaths };
-    this.bots = this._generateBots(this.botPaths);
-    this.parts = initializeParts(this.bots); //{partName: {state, worker}}
-    this.botStates = initializeBotStates(this.bots);
+    this.staticPaths = { ...paths };
+    this.botPaths = null;
+    this.tagPaths = {};
+
+    this._generatePathDict(this.staticPaths);
+    this.parts = initializeParts(this.botPaths); //{partName: {state, worker}}
+    this.botStates = initializeBotStates(this.botPaths);
     this.replyCallbackFunction = null;
     this.broadcastChannels = new Map();
+    this.tags = {}
   }
 
 
-
   /*
-    botPath={[botName]:[paths]}から
-    bots={[botName]:{partName: path,...}}を生成。
-    partNameは"greeting.episode"のようにファイル名から末尾の".json"を
-    除去したもの
+    botPaths={[botName]:[paths]}を与える。
+    * pathsには
+      '/static/bots/Aurula/greeting.episode.json',
+      '/static/bots/Aurula/myfavorite.concept.json',
+      '/static/bots/Aurula/main.tags.json'などが格納される。
+  
+    * パス末尾の'json'を拡張子、その前の'episode'の部分をsuffixと呼ぶ
+  
+    1. this.bots={[botName]:{partName: path,...}}を生成。
+      - partNameは"greeting.episode"のようにファイル名から末尾の".json"を
+        除去したもの。
+      - partとして有効なのはsuffixがorchestrator, onceptのいずれか
+  
+    2. this.tags={[botName]:[path,...]}を生成。
+     効なのはsuffixが'tags'であるもの
   */
-  _generateBots(botPaths) {
-    let bots = {};
-    for (botName in botPaths) {
-      if (!(botName in bots)) {
-        bots[botName] = {};
-      }
+  _generatePathDict(botPaths) {
+    const validParts = ['episode', 'concept', 'orchestrator'];
 
-      const targets = botPaths[botName].filter((path) => path.endsWith('.json'));
+    for (const botName in botPaths) {
+      this.botPaths[botName] = {};
+      this.tagPaths[botName] = [];
+
+      const targets = botPaths[botName].filter(path =>
+        path.endsWith('.json')
+      );
+
       for (const path of targets) {
-        const partName = path.split('/').pop().replace(/\.json$/, '');
-        bots[botName][partName] = path;
+        const filename = path.split('/').pop(); // greeting.episode.json
+
+        const partName = filename.replace(/\.json$/, '');
+        const suffix = partName.split('.').pop();
+
+        if (validParts.includes(suffix)) {
+          this.botPaths[botName][partName] = path;
+        }
+
+        if (suffix === 'tags') {
+          this.tagPaths[botName].push(path);
+        }
       }
-      return bots;
     }
   }
 
@@ -90,9 +125,11 @@ export class Biomebot {
   ----------------------------------------------------------
   */
   async input(botName, message) {
-    if(this.broadcastChannels.has(botName)){
+    if (this.broadcastChannels.has(botName)) {
       const channel = this.broadcastChannels.get(botName);
-      channel.postMessage({ type: 'input', message });
+      channel.postMessage({ 
+        type: 'input', 
+        message: this._encodeTags(botName, message) });
     } else {
       throw new Error(`${botName} not deployed`);
     }
@@ -114,12 +151,12 @@ export class Biomebot {
   async activate(request) {
     const { botName, partNames, excludedPartNames } = request;
 
-    if (!(botName in this.bots)) {
+    if (!(botName in this.botPaths)) {
       throw new Error(`invalid botName ${botName}`);
     }
     const botState = this.botStates[botName];
     const targetPartNames = partNames.filter(
-      partName => { !excludedPartNames.includes(partName) && partName in this.bots[botName] });
+      partName => { !excludedPartNames.includes(partName) && partName in this.botPaths[botName] });
     // Process all parts in parallel
     const promises = targetPartNames.map(async (partName) => {
       const partId = `${botName}:${partName}`;
@@ -141,6 +178,7 @@ export class Biomebot {
         // Deploy if not deployed
         if (part.state === 'idle') {
           await this._deployPart(botName, partName);
+          this._loadTags(botName);
           this.broadcastChannels.set(botName, new BroadcastChannel(`biomebot-${botName}`));
         }
 
@@ -190,7 +228,7 @@ export class Biomebot {
   async deactivate(request) {
     const { botName, partNames, excludedPartNames } = request;
 
-    if (!(botName in this.bots)) {
+    if (!(botName in this.botPaths)) {
       throw new Error(`invalid botName ${botName}`);
     }
 
@@ -198,7 +236,7 @@ export class Biomebot {
     const failedParts = [];
     const botState = this.botStates[botName];
     const targetPartNames = partNames.filter(
-      partName => { !excludedPartNames.includes(partName) && partName in this.bots[botName] });
+      partName => { !excludedPartNames.includes(partName) && partName in this.botPaths[botName] });
 
     const promises = targetPartNames.map(async (partName) => {
       const partId = `${botName}:${partName}`;
@@ -257,7 +295,7 @@ export class Biomebot {
     const { botName, partNames } = request;
     this.log(`Reporting bot: ${botName}, parts: ${partNames?.join(',') ?? 'all'}`);
 
-    const botState = this.bots.get(botName);
+    const botState = this.botPaths.get(botName);
     if (!botState) {
       return {
         type: 'reportCompleted',
@@ -338,10 +376,10 @@ export class Biomebot {
     });
 
     // Clear bot state
-    const botState = this.bots.get(botName);
+    const botState = this.botPaths.get(botName);
     if (botState) {
       botState.parts.clear();
-      this.bots.delete(botName);
+      this.botPaths.delete(botName);
     }
 
     // Clear part cache for this bot and close workerChannels
@@ -387,7 +425,7 @@ export class Biomebot {
       throw new Error(`Part ${partName} not found for bot ${botName}`);
     }
     if (part.state === 'blank') {
-      const partPath = this.bots[botName][partName];
+      const partPath = this.botPaths[botName][partName];
       const worker = new Worker(partPath);
       part.worker = worker;
       part.state = 'deploying';
@@ -433,8 +471,12 @@ export class Biomebot {
             break;
           case 'output': {
             // output request by orchestraotor part
+            const m = {
+              ...event.message,
+              text: this._decodeTags(event.message.text)
+            }
             this._replyCallbackFunction?.(
-              event.botName, event.message);
+              event.botName, m);
             break;
           }
           default:
@@ -442,5 +484,135 @@ export class Biomebot {
         }
       }
     }
+  }
+
+  /**
+   * タグ定義JSONを読み込み、
+   * this.tags[botName] = {
+   *   encode: { surface: tag },
+   *   decode: { tag: [surface1, ...] },
+   *   surfaces: [surface, ...] // 長い順
+   * }
+   * を生成する。
+   */
+  async _loadTags(botName) {
+    const encode = {};
+    const decode = {};
+
+    const paths = this.tagPaths[botName] || [];
+
+    for (const path of paths) {
+      const res = await fetch(path);
+
+      if (!res.ok) {
+        console.warn(`Failed to load tag file: ${path}`);
+        continue;
+      }
+
+      const json = await res.json();
+
+      if (!Array.isArray(json.tags)) {
+        continue;
+      }
+
+      for (const tagObj of json.tags) {
+        for (const [tag, surfaces] of Object.entries(tagObj)) {
+          if (!Array.isArray(surfaces)) {
+            continue;
+          }
+
+          decode[tag] ??= [];
+
+          for (const surface of surfaces) {
+            encode[surface] = tag;
+            decode[tag].push(surface);
+          }
+        }
+      }
+    }
+
+    const sortedSurfaces = Object.keys(encode)
+      .sort((a, b) => b.length - a.length);
+
+    this.tags ??= {};
+    this.tags[botName] = {
+      encode,
+      decode,
+      surfaces: sortedSurfaces,
+      tagNames: {}
+    };
+  }
+
+
+  /*
+   * this.tags[botName].encode = { surface: tag }
+   * を利用して、text中のsurfaceをtagに置換する。
+   *
+   * 置換に使われたsurfaceは、
+   * this.tags[botName].tagNames[tag] に保存する。
+   */
+  _encodeTags(botName, message) {
+    const tags = this.tags?.[botName];
+
+    if (!tags) {
+      return text;
+    }
+
+    let result = text;
+
+    // ユーザ名はmessageから取得
+    const dname = message.displayName;
+    if(result.includes(dname)){
+      tags.tagNmaes["{user}"] = dname;
+      result = result.replaceAll(dname,"{user}");
+    }
+
+    for (const surface of tags.surfaces) {
+      if (!result.includes(surface)) {
+        continue;
+      }
+
+      const tag = tags.encode[surface];
+
+      // 直近で使われたsurfaceとして記録する
+      tags.tagNames[tag] = surface;
+
+      result = result.replaceAll(surface, tag);
+    }
+
+    return result;
+  }
+
+  /*
+ * this.tags[botName].decode = { tag: [surface1, surface2, ...] }
+ * と
+ * this.tags[botName].tagNames = { tag: surface }
+ * を利用して、text中のtagをsurfaceに戻す。
+ */
+  _decodeTags(botName, text) {
+    const tags = this.tags?.[botName];
+
+    if (!tags) {
+      return text;
+    }
+
+    let result = text;
+
+    const tagList = Object.keys(tags.decode)
+      .sort((a, b) => b.length - a.length);
+
+    for (const tag of tagList) {
+      const surface =
+        tags.tagNames[tag] ??
+        tags.decode[tag]?.[0];
+
+      if (!surface) {
+        continue;
+      }
+
+      result = result.replaceAll(tag, surface);
+    }
+
+    return result;
   }
 }
