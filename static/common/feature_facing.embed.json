@@ -1,0 +1,10 @@
+[
+    {
+        "surfaces": ["相手を見て","face"],
+        "embeddings": {"{facing_face}": 1.0}
+    },
+    {
+        "surfaces": ["away","顔を背け","顔を見ない","こっち向かない"],
+        "embedding": {"{facing_away}": 1.0}
+    }
+]

@@ -18,7 +18,7 @@ self=独り言、other=誰かに向けた言葉
 - "happy" | "sad" | "angry" | "surprised" | "neutral"
 
 ## facing: string
-- "personal" | "face" | "away"
+- "self" | "face" | "away"
 
 ## location: string
 - "private" | "public"

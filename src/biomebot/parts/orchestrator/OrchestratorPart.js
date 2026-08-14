@@ -17,35 +17,9 @@ export class OrchestratorPart extends Part {
     this.inputQueue = [];
   }
 
-  async init(botName, partName, worker, broadcastChannel, firestoreToken = null) {
-    this.botName = botName;
-    this.partName = partName;
-    this.worker = worker;
-    this.broadcastChannel = broadcastChannel;
-    this.firestoreToken = firestoreToken;
-
-    const path = `static/bots/${botName}/${partName}.json`;
-    let response;
-
-    try {
-      response = await fetch(path);
-    } catch (err) {
-      console.warn(`failed to fetch "${path}"`, err);
-      return;
-    }
-
-    if (!response.ok) {
-      console.warn(`failed to load "${path}" (${response.status})`);
-      return;
-    }
-
-    let data;
-    try {
-      data = await response.json();
-    } catch (err) {
-      console.warn(`failed to parse JSON in "${path}"`, err);
-      return;
-    }
+  async init(botName, partName, firestoreToken = null) {
+    const data = await _init(botName,partName,firestoreToken);
+    
     const factor = data?.factor ?? {};
     const intervals = factor.intervals_msec ?? [300];
     this.factor = { ...factor, intervals_msec: intervals };

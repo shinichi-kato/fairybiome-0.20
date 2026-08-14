@@ -1,0 +1,14 @@
+[
+    {
+        "surfaces": ["bot","チャットボット","妖精"],
+        "embeddings": {"bot": 1.0}
+    },
+    {
+        "surfaces": ["user","{user}"],
+        "embedding": {"user": 1.0}
+    },
+    {
+        "surfaces": ["cue"],
+        "embedding": {"cue": 1.0}
+    }
+]

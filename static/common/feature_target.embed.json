@@ -1,0 +1,10 @@
+[
+    {
+        "surfaces": ["self","独り言","ひとりごと"],
+        "embeddings": {"self": 1.0}
+    },
+    {
+        "surfaces": ["other","語りかけ"],
+        "embedding": {"other": 1.0}
+    }
+]

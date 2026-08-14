@@ -8,15 +8,38 @@ export class Part {
     this._pendingMessages = [];
     this.engineName = "";
     this.engine = null;
-    this.broadcastChannel = null;
-    this._broadcastChannel = null;
   }
 
-  init(botName,partName){
+  async _init(botName, partName, firestoreToken = null) {
     this.botName = botName;
     this.partName = partName;
-    this.isActive = false;
-    this.status = "idle"
+    this.firestoreToken = firestoreToken;
+    this.isActive=false;
+    this.status = "idle";
+
+    const path = `static/bots/${botName}/${partName}.json`;
+    let response;
+
+    try {
+      response = await fetch(path);
+    } catch (err) {
+      console.warn(`failed to fetch "${path}"`, err);
+      return;
+    }
+
+    if (!response.ok) {
+      console.warn(`failed to load "${path}" (${response.status})`);
+      return;
+    }
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      console.warn(`failed to parse JSON in "${path}"`, err);
+      return;
+    }
+    return data;
   }
 
   async deploy() {
@@ -54,6 +77,7 @@ export class Part {
     if (!this.engine) {
       return { status: "error", message: "engineが起動していません" }
     }
+    return { status: "ok" }
   }
 
 }

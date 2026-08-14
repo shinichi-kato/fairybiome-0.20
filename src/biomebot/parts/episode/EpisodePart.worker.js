@@ -8,28 +8,58 @@
  ことで、ロジック側ののテストと デバッグが容易になり、 通信経路が明確化する。
 */
 
-import EpisodePart from './EpisodePart';
+import EpisodePart from './EpisodePart.js';
 
 const episodePart = new EpisodePart();
+let broadcastChannel = null;
 
-onmessage = (e) => {
-  const event = e.data;
+onmessage = async (messageEvent) => {
+  const event = messageEvent.data ?? {};
+
   switch (event.type) {
     case 'init': {
-      episodePart.init(event.botName, event.partName);
-      postMessage({ type: "initialized" });
+      await episodePart.init(event.botName, event.partName, event.firestoreToken ?? null);
+      broadcastChannel = new BroadcastChannel(`biomebot-${event.botName}`);
+      broadcastChannel.onmessage = (channelEvent) => {
+        const payload = channelEvent.data ?? {};
+
+        switch (payload.type) {
+          case 'input': {
+            const messages = episodePart.input(payload.message);
+            for (const message of messages) {
+              broadcastChannel.postMessage({ type: 'innerSpeech', message });
+            }
+            break;
+          }
+          case 'innerSpeech': {
+            const messages = episodePart.inputInnerSpeech(payload.message);
+            for (const message of messages) {
+              broadcastChannel.postMessage({ type: 'innerSpeech', message });
+            }
+            break;
+          }
+          case 'output': {
+            episodePart.getOutput(payload.message);
+            break;
+          }
+          default:
+            break;
+        }
+      };
+      postMessage({ type: 'initialized', status: 'ok' });
       return;
     }
+
     case 'deploy': {
-      const res = episodePart.deploy();
-      postMessage({ type: "deployed", status: res ? "ok" : "error" })
+      const res = await episodePart.deploy();
+      postMessage({ type: 'deployed', status: res ? 'ok' : 'error' });
       return;
     }
 
     case 'activate': {
       const res = episodePart.activate();
-      if (res.status == 'ok') {
-        postMessage({ type: "activated" });
+      if (res?.status === 'ok') {
+        postMessage({ type: 'activated' });
       }
       postMessage(res);
       return;
@@ -37,8 +67,8 @@ onmessage = (e) => {
 
     case 'deactivate': {
       const res = episodePart.deactivate();
-      if (res.status == 'ok') {
-        postMessage({ type: "deactivated" });
+      if (res?.status === 'ok') {
+        postMessage({ type: 'deactivated' });
       }
       postMessage(res);
       return;
@@ -46,25 +76,20 @@ onmessage = (e) => {
 
     case 'report': {
       const res = episodePart.report();
-      postMessage(res)
+      postMessage({ type: 'reported', ...res });
+      return;
     }
 
     case 'terminate': {
-      episodePart.terminate();
+      if (broadcastChannel) {
+        broadcastChannel.close();
+      }
+      postMessage({ type: 'terminated', status: 'ok' });
       return;
     }
-  }
-}
 
-const broadcastChannel = new BroadcastChannel(`biomebot-${episodePart.botName}`);
-broadcastChannel.onmessage = (e) => {
-  const event = e.data;
-
-  switch (event.type) {
-    case 'message': {
-      const res = episodePart.receive(event.message);
-      postMessage({ type: "innerSpeech", message: res })
+    default:
+      postMessage({ type: 'ignored', status: 'ok' });
       return;
-    }
   }
-}
+};

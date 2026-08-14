@@ -1,0 +1,42 @@
+[
+    {
+        "surfaces": ["joy","喜び","嬉しい","楽しい","たのしい","悲しくない"],
+        "embeddings": {"{emo_joy_sin}": 0,"{emo_joy_cos}":1.0},
+        "comment": "角度0度"
+    },
+    {
+        "surfaces": ["trust","信頼","信じる","信用してる","嫌いじゃない","嫌じゃない"],
+        "embedding": {"{emo_trust_sin}": 0.7071, "{emo_trust_cos}":0.7071},
+        "comment": "角度45度"
+    },
+    {
+        "surfaces": ["fear","怖い","恐い","恐れてる","恐ろしい","恐怖","不安"],
+        "embedding": {"{emo_fear_sin}": 1.000, "{emo_fear_cos}":0},
+        "comment": "角度90度"
+    },
+    {
+        "surfaces": ["surprise","驚き","びっくり","驚いた"],
+        "embedding": {"{emo_surprise_sin}": 0.7071, "{emo_surprise_cos}":-0.7071},
+        "comment": "角度135度"
+    }, 
+    {
+        "surfaces": ["sadness","悲しい","悲しみ","悲哀"],
+        "embedding": {"{emo_sadness_sin}": 0.000, "{emo_sadness_cos}":1.000},
+        "comment": "角度180度"
+    },
+    {
+        "surfaces": ["disgust","嫌悪","嫌い","おぞましい","信じられない","信頼できない"],
+        "embedding": {"{emo_disgust_sin}": -0.7071, "{emo_disgust_cos}":0.7071},
+        "comment": "角度225度"
+    },
+    {
+        "surfaces": ["anger","怒り","怒ってる","ムカつく","腹たつ","腹が立つ","イライラ"],
+        "embedding": {"{emo_anger_sin}": -1.000, "{emo_anger_cos}":0.000},
+        "comment": "角度270度"
+    },
+    {
+        "surfaces": ["anticipation","期待","気になる","警戒"],
+        "embedding": {"{emo_anticipation_sin}": -0.7071, "{emo_anticipation_cos}":0.7071},
+        "comment": "角度315度"
+    }
+]

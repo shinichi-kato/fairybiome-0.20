@@ -33,7 +33,7 @@ participant PartWorkers@{ "type" : "collections" }
 4. 待機終了時に以下の方法でoutputを選ぶ
   - innerSpeechToOtherがあればスコア上位3発言のうちからランダムに一つを選び以下 (A) と呼ぶ。
   - innerSpeechToSelfがあればスコア上位3発言のうちからランダムに一つを選び以下 (B) と呼ぶ。
-  - (A)(B)いずれしか無い場合はそれをoutputする。
+  - (A)(B)のどちらかしか無い場合はそれをoutputする。
   - (A)(B)両方があり、(B)のスコア > (A)のスコアである場合(A)メッセージのmessage.emoを(B)のemoに差し替え、(A)をoutputとする。message.props.partNamesには(A)(B)両方の名前を記載する。
   - (A)(B)いずれもない場合、messageなしのoutputを送る。
 

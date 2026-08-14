@@ -1,0 +1,11 @@
+[
+    {
+        "surfaces": ["private","個人的","プライベート","秘密"],
+        "embeddings": {"{location_private}": 1.0}
+    },
+    {
+        "surfaces": ["public","公開","パブリック","公の"],
+        "embedding": {"{location_public}": 1.0}
+    }
+
+]
