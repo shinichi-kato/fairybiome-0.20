@@ -3,6 +3,12 @@
 
 import Dexie from 'dexie';
 import { TinySegmenter } from '../../_legacy/biomebot-021/tinysegmenter.js';
+import { WordEmbedding } from './modules/WordEmbedding.js';
+import { TextEmbedding } from './modules/TextEmbedding.js';
+import { AttentionEmbedding } from './modules/AttentionEmbedding.js';
+import { FeatureExtractor } from './modules/FeatureExtractor.js';
+import { MatrixBuilder } from './modules/MatrixBuilder.js';
+import { Retriever } from './modules/Retriever.js';
 
 export class EpisodeStorage {
   constructor(firestore_token) {
@@ -28,9 +34,27 @@ export class EpisodeStorage {
     this.indexMap = [];
     this.dataRows = [];
     this.messageHistory = [];
-    this.WordTags = { dict: {}, groups: {}, nextGroupId: 0 };
-    this.WordTagsCache = {};
     this._segmenter = new TinySegmenter();
+
+    this.wordEmbedding = new WordEmbedding();
+    this.WordTags = this.wordEmbedding;
+    this.textEmbedding = new TextEmbedding(this.wordEmbedding, this._segmenter);
+    this.attentionEmbedding = new AttentionEmbedding();
+    this.featureExtractor = new FeatureExtractor();
+    this.matrixBuilder = new MatrixBuilder({
+      wordEmbedding: this.wordEmbedding,
+      textEmbedding: this.textEmbedding,
+      featureExtractor: this.featureExtractor,
+      attentionEmbedding: this.attentionEmbedding,
+    });
+    this.retriever = new Retriever({
+      wordEmbedding: this.wordEmbedding,
+      textEmbedding: this.textEmbedding,
+      featureExtractor: this.featureExtractor,
+      defaultPrecision: 0,
+    });
+
+    this.WordTagsCache = {};
   }
 
   async deploy(botName,partName, data=null){
@@ -236,12 +260,15 @@ export class EpisodeStorage {
       this.cache = cached;
     }
 
-    const dataRows = this._collectDataRows();
-    const { blocks, indexMap } = this._buildWordVectorBlocks(dataRows);
+    const dataRows = this.matrixBuilder.collectDataRows({
+      staticSource: this.staticSource,
+      firestoreSource: this.firestoreSource,
+    });
+    const { blocks, indexMap } = this.matrixBuilder.buildWordVectorBlocks(dataRows);
     this.wordVector = blocks;
     this.indexMap = indexMap;
     this.dataRows = dataRows;
-    this.attentionVectors = this._buildAttentionVectors(this.wordVector);
+    this.attentionVectors = this.attentionEmbedding.buildAttentionVectors(this.wordVector);
 
     if (this.cache && this._isCacheFresh(this.cache.timestamp, sourceTimestamp)) {
       return true;
@@ -265,192 +292,36 @@ export class EpisodeStorage {
       : message && typeof message.text === 'string'
         ? message.text
         : '';
-    const messageVector = this._embedText(text);
-    this.vector = messageVector;
-    console.log("retrieve vector",this.vector);
 
-    if (!messageVector || !Object.keys(messageVector).length || !Array.isArray(this.wordVector)) {
-      return {
-        status: "error",
-        message:"入力メッセージがベクトル化できませんでした"
-      }
-    }
-
-    const flatVectors = [];
-    const flatIndexes = [];
-    for (let blockIndex = 0; blockIndex < this.wordVector.length; blockIndex += 1) {
-      const block = this.wordVector[blockIndex];
-      const blockIndexes = Array.isArray(this.indexMap[blockIndex]) ? this.indexMap[blockIndex] : [];
-      for (let entryIndex = 0; entryIndex < block.length; entryIndex += 1) {
-        flatVectors.push(block[entryIndex]);
-        flatIndexes.push(blockIndexes[entryIndex]);
-      }
-    }
-
-    if (!flatVectors.length) {
-      return {
-        status: "error",
-        message: "flatVectorsが空です"
-      }
-    }
-
-    const scored = flatVectors
-      .map((vector, index) => ({ score: this._vectorDot(messageVector, vector), index }))
-      .sort((a, b) => b.score - a.score);
-
-    const precision = this._getPrecisionThreshold();
-    const candidates = scored.filter((candidate) => {
-      const rowIndex = flatIndexes[candidate.index];
-      return candidate.score > precision && this._hasNextDataRow(rowIndex);
+    const result = this.retriever.retrieve({
+      message: text,
+      wordVector: this.wordVector,
+      indexMap: this.indexMap,
+      dataRows: this.dataRows,
+      totalPrecision: this._getPrecisionThreshold(),
+      textIndex: this._getTextIndex(),
+      verbose,
     });
 
-    if (!candidates.length) {
-      if(verbose){
-        let ms = [];
-        const viewSize = 5 ? scored.length>5 : scored.length;
-        for(let i=0; i<viewSize; i++){
-          let v=scored[i];
-          ms.push(`${this.partName} ${i}: score: ${v.score}, index: ${v.index}`)
-        }
-        return {
-          status: "low score",
-          message: ms.join('<br>')
-        }
-      }
-      return null
-    }
+    this.WordTagsCache = this.retriever.buildWordTagSubstitutionMap(text, this.wordEmbedding);
+    this.vector = this.textEmbedding.embedText(text);
 
-    const topCount = Math.min(4, candidates.length);
-    const topCandidates = candidates.slice(0, topCount);
-    const selected = topCandidates[Math.floor(Math.random() * topCandidates.length)];
-    const matchedRowIndex = flatIndexes[selected.index];
-    const nextRow = this._getNextDataRow(matchedRowIndex);
-
-    if (!nextRow) {
-      if(verbose){
-        return {
-          status: "no textRow",
-          message: `${this.partName} matchedRowIndex=${matchedRowIndex}, topCount=${topCount}`
-        }
-      }
-      return null;
-    }
-
-    const textIndex = this._getTextIndex();
-    const responseRow = Array.isArray(nextRow) ? [...nextRow] : nextRow;
-    const substitutions = this._buildWordTagSubstitutionMap(text);
-    this.WordTagsCache = substitutions;
-
-    if (textIndex >= 0 && Array.isArray(responseRow) && typeof responseRow[textIndex] === 'string') {
-      responseRow[textIndex] = this._rewriteTextWithMatchedTags(responseRow[textIndex], substitutions);
-    }
-
-    return {
-      status: "ok",
-      row: responseRow,
-      score: selected.score,
-    };
-  }
-
-  _buildWordTagSubstitutionMap(text) {
-    const substitutions = {};
-    if (!text || typeof text !== 'string' || !this.WordTags.dict) {
-      return substitutions;
-    }
-
-    const surfaces = Object.keys(this.WordTags.dict)
-      .sort((a, b) => {
-        const diff = b.length - a.length;
-        return diff !== 0 ? diff : a.localeCompare(b);
-      });
-
-    const used = Array(text.length).fill(false);
-
-    for (const surface of surfaces) {
-      const tag = this.WordTags.dict[surface];
-      if (!tag || typeof tag.groupId !== 'number') {
-        continue;
-      }
-      if (substitutions[tag.groupId]) {
-        continue;
-      }
-
-      let startIndex = 0;
-      while (startIndex < text.length) {
-        const foundIndex = text.indexOf(surface, startIndex);
-        if (foundIndex === -1) {
-          break;
-        }
-
-        let collision = false;
-        for (let i = foundIndex; i < foundIndex + surface.length; i += 1) {
-          if (used[i]) {
-            collision = true;
-            break;
-          }
-        }
-
-        if (!collision) {
-          substitutions[tag.groupId] = surface;
-          for (let i = foundIndex; i < foundIndex + surface.length; i += 1) {
-            used[i] = true;
-          }
-          break;
-        }
-
-        startIndex = foundIndex + 1;
-      }
-    }
-
-    return substitutions;
-  }
-
-  _rewriteTextWithMatchedTags(text, substitutions) {
-    if (!text || typeof text !== 'string' || Object.keys(substitutions).length === 0) {
-      return text;
-    }
-
-    const replacementMap = {};
-    for (const [surface, info] of Object.entries(this.WordTags.dict)) {
-      if (!info || typeof info.groupId !== 'number') {
-        continue;
-      }
-      const replacement = substitutions[info.groupId];
-      if (replacement) {
-        replacementMap[surface] = replacement;
-      }
-    }
-
-    const surfaces = Object.keys(replacementMap).sort((a, b) => {
-      const diff = b.length - a.length;
-      return diff !== 0 ? diff : a.localeCompare(b);
-    });
-
-    if (!surfaces.length) {
-      return text;
-    }
-
-    let result = '';
-    let index = 0;
-
-    while (index < text.length) {
-      let matched = false;
-      for (const surface of surfaces) {
-        if (text.startsWith(surface, index)) {
-          result += replacementMap[surface];
-          index += surface.length;
-          matched = true;
-          break;
-        }
-      }
-
-      if (!matched) {
-        result += text[index];
-        index += 1;
-      }
+    if (result && result.status === 'ok') {
+      return {
+        row: result.row,
+        score: result.score,
+      };
     }
 
     return result;
+  }
+
+  _buildWordTagSubstitutionMap(text) {
+    return this.retriever.buildWordTagSubstitutionMap(text, this.wordEmbedding);
+  }
+
+  _rewriteTextWithMatchedTags(text, substitutions) {
+    return this.retriever.rewriteTextWithMatchedTags(text, substitutions, this.wordEmbedding);
   }
 
   _getTextIndex() {
@@ -700,218 +571,51 @@ export class EpisodeStorage {
   }
 
   _buildWordVectorBlocks(dataRows) {
-    const blocks = [];
-    const indexMap = [];
-    let currentBlock = [];
-    let currentIndexBlock = [];
-
-    const flushBlock = () => {
-      if (currentBlock.length) {
-        blocks.push(currentBlock);
-        indexMap.push(currentIndexBlock);
-      }
-
-      currentBlock = [];
-      currentIndexBlock = [];
-    };
-
-    for (const item of dataRows) {
-      if (item.separator) {
-        flushBlock();
-        continue;
-      }
-
-        if (item.text && item.text.trim().length) {
-        const vector = this._embedText(item.text.trim());
-        if (Object.keys(vector).length) {
-          currentBlock.push(vector);
-          currentIndexBlock.push(item.index);
-        }
-      }
-    }
-
-    flushBlock();
-    return { blocks, indexMap };
+    return this.matrixBuilder.buildWordVectorBlocks(dataRows);
   }
 
   _embedBlock(lines) {
-    const block = [];
-    for (const line of lines) {
-      const vector = this._embedText(line);
-      if (Object.keys(vector).length) {
-        block.push(vector);
-      }
-    }
-    return block;
+    return this.matrixBuilder.embedBlock(lines);
   }
 
   _buildAttentionVectors(wordVector) {
-    if (!Array.isArray(wordVector)) {
-      return [];
-    }
-
-    return wordVector.map((block) => {
-      const contexts = [];
-      for (let n = 0; n < block.length; n += 1) {
-        const x_n = block[n];
-        if (!x_n || typeof x_n !== 'object') {
-          contexts.push({});
-          continue;
-        }
-
-        const scores = [];
-        for (let i = 0; i < n; i += 1) {
-          const score = this._vectorDot(x_n, block[i]);
-          scores.push(score);
-        }
-
-        const alphas = this._softmax(scores);
-        let context = {};
-        for (let i = 0; i < n; i += 1) {
-          if (!alphas[i]) {
-            continue;
-          }
-          context = this._addVector(context, block[i], alphas[i]);
-        }
-
-        contexts.push(context);
-      }
-      return contexts;
-    });
+    return this.attentionEmbedding.buildAttentionVectors(wordVector);
   }
 
   _vectorDot(a, b) {
-    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
-      return 0;
-    }
-
-    let sum = 0;
-    for (const [key, value] of Object.entries(a)) {
-      if (typeof value !== 'number') {
-        continue;
-      }
-      const otherValue = b[key];
-      if (typeof otherValue === 'number') {
-        sum += value * otherValue;
-      }
-    }
-    return sum;
+    return this.attentionEmbedding.vectorDot(a, b);
   }
 
   _addVector(base, vector, scale = 1) {
-    if (!vector || typeof vector !== 'object') {
-      return base;
-    }
-    const result = { ...base };
-    for (const [key, value] of Object.entries(vector)) {
-      if (typeof value !== 'number') {
-        continue;
-      }
-      result[key] = (result[key] || 0) + value * scale;
-    }
-    return result;
+    return this.attentionEmbedding.addVector(base, vector, scale);
   }
 
   _softmax(scores) {
-    if (!Array.isArray(scores) || scores.length === 0) {
-      return [];
-    }
-
-    const maxScore = Math.max(...scores);
-    const exps = scores.map((score) => Math.exp(score - maxScore));
-    const sum = exps.reduce((acc, value) => acc + value, 0);
-    if (sum === 0) {
-      return exps.map(() => 0);
-    }
-    return exps.map((value) => value / sum);
+    return this.attentionEmbedding.softmax(scores);
   }
 
   _embedText(text) {
-    const tokens = this._segmentText(text);
-    const features = {};
-
-    for (let i = tokens.length - 1; i >= 0; i -= 1) {
-      const token = tokens[i];
-      if (!token) {
-        continue;
-      }
-
-      if (this._isParticle(token) && i > 0) {
-        const prev = tokens[i - 1];
-        const combined = `${prev}${token}`;
-        const tag = this.WordTags.dict[combined];
-
-        if (tag) {
-          this._addEmbeddingToFeatures(features, tag.embedding, 1);
-          i -= 1;
-          continue;
-        }
-
-        this._addTokenWeight(features, prev, 0.5);
-        this._addTokenWeight(features, combined, 0.5);
-        i -= 1;
-        continue;
-      }
-
-      const tag = this.WordTags.dict[token];
-      if (tag) {
-        this._addEmbeddingToFeatures(features, tag.embedding, 1);
-      } else {
-        this._addTokenWeight(features, token, 1);
-      }
-    }
-
-    return features;
+    return this.textEmbedding.embedText(text);
   }
 
   _segmentText(text) {
-    if (!text || typeof text !== 'string') {
-      return [];
-    }
-
-    let tokens = [];
-    if (this._segmenter && typeof this._segmenter.segment === 'function') {
-      tokens = Array.from(this._segmenter.segment(text));
-    } else {
-      tokens = text.match(/([一-龠ぁ-んァ-ヶー]+|[A-Za-z0-9]+|[^\s])/gu) || [];
-    }
-
-    return tokens
-      .map((token) => token.trim())
-      .filter((token) => token.length > 0 && !this._isPunctuation(token));
+    return this.textEmbedding.segmentText(text);
   }
 
   _addEmbeddingToFeatures(features, embedding, weight) {
-    if (!embedding || typeof embedding !== 'object' || Array.isArray(embedding)) {
-      return;
-    }
-
-    for (const [key, value] of Object.entries(embedding)) {
-      if (typeof value !== 'number' || Number.isNaN(value)) {
-        continue;
-      }
-      features[key] = (features[key] || 0) + value * weight;
-    }
+    return this.textEmbedding._addEmbeddingToFeatures(features, embedding, weight);
   }
 
   _addTokenWeight(features, token, weight) {
-    if (!token || typeof token !== 'string') {
-      return;
-    }
-    features[token] = (features[token] || 0) + weight;
+    return this.textEmbedding._addTokenWeight(features, token, weight);
   }
 
   _isParticle(token) {
-    const particles = new Set([
-      'は', 'が', 'を', 'に', 'へ', 'と', 'で', 'や', 'も', 'から', 'まで', 'より', 'だけ', 'しか', 'ほど', 'こそ',
-      'ね', 'よ', 'ぞ', 'ぜ', 'さ', 'な', 'か', 'から', 'でも', 'なら', 'けれど', 'しかし', 'ため', 'ので', 'のに',
-      'ながら', 'つつ', 'まま', 'だって', 'ても', 'でも', 'たり', 'なり', 'だの', 'やら', 'でも', 'どころか', 'からこそ',
-    ]);
-    return particles.has(token);
+    return this.textEmbedding._isParticle(token);
   }
 
   _isPunctuation(token) {
-    return /^[\p{P}\p{S}]+$/u.test(token);
+    return this.textEmbedding._isPunctuation(token);
   }
 
     _normalizeEmbedding(embedding) {

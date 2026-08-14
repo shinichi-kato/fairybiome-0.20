@@ -71,6 +71,37 @@ describe('EpisodeStorage build cache and matrix', () => {
     expect(storage2.cache.matrix).toEqual(storage1.cache.matrix);
   });
 
+  it('exposes the modular pipeline used during build and retrieve', async () => {
+    const storage = new EpisodeStorage('botA');
+    storage.staticSource = {
+      title: '会話',
+      author: 'skato',
+      tags: [],
+      factor: { activity: 0.6, precision: 0.4 },
+      timestamp: 123456,
+      columns: ['role', 'text', 'date', 'time', 'emo', 'facing', 'location'],
+      data: [
+        ['bot', 'こんにちは', '10/12', '12:23', 'laugh', 'face', 'private'],
+        ['user', '今日はどう？', '10/12', '12:24', '', 'face', 'private'],
+        ['bot', '元気です', '10/12', '12:25', 'happy', 'face', 'private'],
+      ],
+    };
+
+    await storage.build('botA', 'greeting');
+
+    expect(storage.wordEmbedding).toBeDefined();
+    expect(storage.textEmbedding).toBeDefined();
+    expect(storage.matrixBuilder).toBeDefined();
+    expect(storage.retriever).toBeDefined();
+    expect(storage.WordTags).toBe(storage.wordEmbedding);
+
+    const response = storage.retrieve({ text: 'こんにちは' });
+    expect(response).toEqual({
+      row: ['user', '今日はどう？', '10/12', '12:24', '', 'face', 'private'],
+      score: expect.any(Number),
+    });
+  });
+
   it('throws a proper Error when botName or partName is missing', async () => {
     const storage = new EpisodeStorage('botA');
 

@@ -1,152 +1,226 @@
-EpisodePartクラス
-=================
+# EpisodePart システム設計書
 
-EpisodeStorageを使用して返答を返すパート
+EpisodeStorageを使用して、会話ログから類似発話を検索し、その次行を返答候補として返すチャットボットパートの仕様です。
 
-## 辞書ファイル
+---
 
-*.episode.json
+## 📋 目次
+
+このドキュメントは、以下の 6 つのモジュール化されたマークダウンに分割されています。
+
+### 1. [feature-types.md](feature-types.md) — 特徴量の分類と理論
+- 連続的な意味の特徴量（role, text, target, facing, location）
+- 周期的な特徴量（date, time, emo）
+- 連続的な値の特徴量（barometer）
+- 各タイプの ベクトル化方法（word embedding, [sin, cos], RBF など）
+
+### 2. [word-embedding.md](word-embedding.md) — Word Embedding モジュール
+- 単語タグ（Word Tags）ファイル形式
+- 辞書の構築と embedding の正規化
+- テキスト内での単語検索と埋め込み
+
+### 3. [text-embedding.md](text-embedding.md) — Text Embedding モジュール
+- TinySegmenter による分かち書き
+- 複合語マッピング（助詞を含む複合語の処理）
+- ブロック分割と word vector の格納
+
+### 4. [attention-embedding.md](attention-embedding.md) — Attention Embedding モジュール
+- Softmax ベースの Attention 計算
+- スコア（内積）の計算と重み化
+- 文脈ベクトル（Context Vector）の生成
+
+### 5. [matrix-pipeline.md](matrix-pipeline.md) — 特徴量行列構築パイプライン
+- Step 1: データファイルの読み込み
+- Step 2: Word Tags ファイルの読み込み
+- Step 3: 各行のベクトル化（全特徴量の統合）
+- Step 4: 正規化・重み付け・連結
+- Step 5: 行列形成とキャッシング
+- **全体の実装フロー図を含む**
+
+### 6. [retrieval-logic.md](retrieval-logic.md) — 返答ロジック
+- **Scenario A: User Input への返答**
+  - メッセージベクトル化 → 類似度計算 → 候補選択 → 返答生成 → 自問自答
+- **Scenario B: Inner Speech への応答**
+  - 反応性判定 → ベクトル化 → 検索 → BroadcastChannel で配信
+- **Scenario C: Output 受信時の処理**
+  - history への記録
+
+### 7. [part-management.md](part-management.md) — パート管理とメッセージング
+- Kernel との連携プロトコル（activate, input, report など）
+- BroadcastChannel による マルチパート通信
+- Worker スレッドの管理
+
+---
+
+## 🎯 責任マップ（モジュール vs 実装クラス）
+
+### EpisodeStorage.js（コア実装）
+
+**現在の責務（モノリシック）:**
+- データロード、辞書構築、特徴量計算、行列構築、キャッシング、検索
+
+**提案される分割（モジュール化後）:**
+
+| 文書 | 責務 | 対応モジュール |
+|------|------|----------------|
+| [word-embedding.md](word-embedding.md) | Word tag 管理・embedding | `WordEmbedding.js` |
+| [text-embedding.md](text-embedding.md) | テキスト分かち書き・複合語マッピング | `TextEmbedding.js` |
+| [attention-embedding.md](attention-embedding.md) | Attention 計算 | `AttentionEmbedding.js` |
+| [feature-types.md](feature-types.md) | 各特徴量の単位計算 | `FeatureExtractor.js` |
+| [matrix-pipeline.md](matrix-pipeline.md) | パイプライン全体・調整 | `MatrixBuilder.js` |
+| [matrix-pipeline.md](matrix-pipeline.md) | ファイルロード | `DataLoader.js` |
+| [retrieval-logic.md](retrieval-logic.md) | 類似度計算・検索 | `Retriever.js` |
+
+---
+
+## 📊 パイプラインの全体図
+
+```
+┌────────────────────────────────────────────────────────┐
+│ データファイル読み込み (DataLoader)                   │
+│  - *.episode.json                                      │
+│  - *.embed.json (Word Tags)                            │
+└──────────────────┬─────────────────────────────────────┘
+                   ↓
+┌────────────────────────────────────────────────────────┐
+│ 各行のベクトル化 (FeatureExtractor)                    │
+│  - 連続的意味 → WordEmbedding.embed()                  │
+│  - text → TextEmbedding.embed()                        │
+│  - 周期的 → [sin, cos] 変換                            │
+│  - 連続値 → RBF 変換                                    │
+└──────────────────┬─────────────────────────────────────┘
+                   ↓
+┌────────────────────────────────────────────────────────┐
+│ Attention 計算 (AttentionEmbedding)                     │
+│  - 過去ベクトルとの Softmax 重み計算                    │
+│  - 文脈ベクトル生成                                    │
+└──────────────────┬─────────────────────────────────────┘
+                   ↓
+┌────────────────────────────────────────────────────────┐
+│ 正規化・重み付け・連結 (MatrixBuilder)                │
+│  - L2 正規化                                           │
+│  - factor.weight で重み付け                            │
+│  - ベクトル連結と再正規化                              │
+└──────────────────┬─────────────────────────────────────┘
+                   ↓
+┌────────────────────────────────────────────────────────┐
+│ 行列キャッシング (EpisodeStorage)                       │
+│  - Dexie DB に保存                                     │
+└────────────────────────────────────────────────────────┘
+                   ↓
+          ┌────────────────────┐
+          │  Retrieval Ready   │
+          │ (Retriever.search) │
+          └────────────────────┘
+```
+
+---
+
+## 🔄 メッセージフロー
+
+### User Input → Response
+
+```
+User Input Message
+      ↓
+EpisodePart.input()
+      ↓
+Retriever.search(message_vector)
+      ↓
+[Candidate rows with scores]
+      ↓
+Random select → Next row
+      ↓
+Output message (+ self-dialog if target='self')
+      ↓
+History に記録
+      ↓
+返答リスト返却
+```
+
+### Inner Speech → Broadcasting
+
+```
+Inner Speech Message (from orchestrator)
+      ↓
+EpisodePart.inputInnerSpeech()
+      ↓
+Reactivity check (random < factor.reactivity)
+      ↓
+Retriever.search() [if react == true]
+      ↓
+BroadcastChannel post
+      ↓
+orchestrator が収集
+```
+
+---
+
+## 📦 辞書ファイル形式
+
+### *.episode.json（会話データ）
 
 ```json
 {
-  "description": "挨拶",
-  "author":"skato",
-  "tags": [
-    {
-      "surfaces": ["しまりすさん", "シマリスさん"],
-      "embedding": {"{you}": 1.0}
-    }
-  ],
+  "description": "パートの説明",
+  "author": "作成者",
   "factor": {
     "amplitude": 0.6,
     "precision": 0.4,
     "reactivity": 0.7,
     "weight": {
-      "role": 0.2,
-      "text": 0.3,
-      "target": 0.2,
-      "date": 0.2,
-      "time": 0.1,
-      "emo": 0.1,
-      "facing": 0.1,
-      "location": 0.1,
-      "barometer": 0.1,
+      "role": 0.2, "text": 0.3, "target": 0.2, "date": 0.2,
+      "time": 0.1, "emo": 0.1, "facing": 0.1, "location": 0.1
     }
   },
   "columns": ["role", "text", "target", "date", "time", "emo", "facing", "location"],
   "data": [
-    "# 文字列はコメント行かつ話題の区切り",
+    "# トピック1",
     ["bot", "こんにちは", "other", "10/12", "12:23", "laugh", "face", "private"],
-    ["user", "今日はどう？", "other","10/12", "12:23", "", "face", "private"],
-    ["bot", "元気ですよ。{you}は元気？", "other","10/12", "12:25", "happy", "face", "private"],
-    ["user", "まあまあ？", "other","10/12", "12:23", "", "face", "private"],
-    ["bot", "最近は涼しくなりましたよね。", "other","10/12", "12:25", "happy", "face", "private"],
+    ["user", "元気?", "other", "10/12", "12:23", "", "face", "private"],
     null
   ]
 }
 ```
 
-## 返答の機序
+---
 
-### 会話データの特徴量
+## 🔑 主要パラメータ
 
-messageのdataに含まれる特徴量は以下のとおり分類できる。
+| パラメータ | 範囲 | 意味 |
+|-----------|------|------|
+| `amplitude` | [0, 1] | 返答スコアの減衰係数 |
+| `precision` | [0, 1] | 類似度しきい値（高 = 厳選） |
+| `reactivity` | [0, 1] | innerSpeech 反応確率 |
+| `weight.*` | [0, 1] | 各特徴量の重み付け係数 |
 
-* 連続的な意味の特徴量:
-  * role
-  * text
-  * target
-  * facing
-  * location
-* 周期的な特徴量:
-  * date
-  * time
-  * emo
-* 連続的な値の特徴量
-  * barometer
+---
 
-連続的な意味の特徴量とはいわゆるembeddingで、もとはいずれもテキストであるがそれをどのようなwordVectorで表現するかは任意である。これらのうち特徴量だけは先行するいくつかの行のattentionが畳み込まれる。また各特徴量を区別しているのは別個に重み付けするためである。
+## 🛠 実装の段階化
 
-周期的な特徴量は時刻などで、時刻は述べ秒数としては連続値であるが、今日と昨日の同時刻が文脈的に近いとみなせると便利である。つまり時刻は一日が2π、日付は一年が2π、曜日は一週間で2πとなるラジアン表現が望ましい。これを[sinθ,cosθ]という特徴量に写像することでembedができる。
-一方、"emo"は感情である。plutchikの輪など極座標系に見立てて整理した例があり、ラジアン表現にすることで近い感情、対極の感情などを表すことができる。感情はテキストでラベルされているが、それを[sinθ,cosθ]という特徴量に割り当てることでベクトル化し、cos類似度の計算上で周期的な特性を実現する。
+### フェーズ 1 ✅ ドキュメント再構成（本来ここ）
+- [ ] 6 つのマークダウン作成 ← **進行中**
+- [ ] 図解追加
+- [ ] 責任マップ統合
 
-連続的な値の特徴量は一般的な数値が特徴量化されたもので大小関係や差が意味を持つ。これは放射規定関数カーネル(RBF)と呼ばれる方法でベクトル化できる。
+### フェーズ 2 〜 4（次の段階）
+- [ ] 実装責任整理
+- [ ] モジュール分割実装
+- [ ] テスト & 検証
 
-全ての特徴量について重み付けをした上で一つの行列にまとめて正規化しcos類似度計算を行う。
+---
 
-### 特徴量行列の計算手順
+## 📖 参照先
 
-1. `/static/bots/${botName}/${partName}.episode.json`を読み込む
-2. 1のファイルのcolumnsに対応した1. `/static/common/feature_${columnName}.embed.json`を読み込む
-3. 1のファイルのdataを読み、2が存在する列は2のルールでembedしたvectorをcolumnごとに生成
-4. dataのtime列は1日=2PIとなるよう換算したthetaを求め、[sin(theta),con(theta)]を要素としたvectorとする。date列は一年=2PIとなるように換算したthetaを求め、[sin(theta),con(theta)]を要素としたvactorとする。
-5. barometer列は最大値が1となるよう規格化した後、放射基底関数カーネルを用いて5要素のベクトル化を行う。
-6. dataのtext列の処理は 6.1-6.3 を参照
-7. columnごとにベクトルの大きさが1となるよう正規化し、factor.weight.${columnName}で重み付けし、全てのベクトルをconcatして再度ベクトルの大きさが1となるように正規化する。
+### ソースコード
+- [EpisodeStorage.js](../../src/EpisodeStorage/EpisodeStorage.js) — コア実装
+- [EpisodePart.js](../../src/biomebot/parts/episode/EpisodePart.js) — Part ラッパー
+- [EpisodePart.worker.js](../../src/biomebot/parts/episode/EpisodePart.worker.js) — Messaging
 
+### 関連設計書
+- [EpisodeStorage.md](../../src/EpisodeStorage/EpisodeStorage.md) — DB 仕様
 
+---
 
-#### 6.1 word embedding
-予めembed表現が決まっている単語をembed表現にマッピングする
-1. /static/common/*.embed.jsonを全てthis.wordEmbedsに読み込む（feature_${columnName}.embed.jsonも含む）
-
-#### 6.2 text embedding
-1. null行やテキスト行は話題の区切りとみなし、ブロックに分割する。
-2. テキストをtinySegmenterで簡易に分かち書きし、要素のリストを逆順にたどる。
-3. 要素が格助詞、副助詞、接続助詞と思われるばあいその前の要素を再結合したものについてwordEmbedsに含まれるか調べる。含まれる場合はそのembeddingをwordVectorに加える。
-4. 含まれない場合は前の要素と再結合した要素を0.5ずつの重みで特徴量に加える。つまり
-```
-キメラは → {"キメラ": 0.5, "キメラは": 0.5}
-``` 
-とする。こうすることで
-「私は学校に行く」「学校に私は行く」
-のように文節の位置を交換しても意味が同じ文についてwordVectorも同じにできる。また「私立大学」の「私」のように一人称ではない「私」を誤判定する可能性を小さくできる。
-
-5. ブロックごとに `this.wordVector = [[block1],[block2],...]` のように2次元配列として格納する。ここで、separator 行は wordVector に加えない。
-6. ブロックごとにdataのindexを`this.indexMap = [[block1],[block2],...]`のように2次元配列として格納する。ここでseparator行はindexMapに加えない。
-
-※5,6 では separator 行を除外する。separator 行は話題の区切りであり、埋め込み対象にはならない。またブロック末尾の行を除外する。ブロック末尾はretrieveで仮にヒットした場合返答になるべきn+1行が存在しないため、検索にヒットさせないため埋め込み対象にしない。
-
-#### 6.3 attention embedding
-1. 最新入力を `x_n` として埋め込みを生成する。
-2. ブロック内の各行 `x_i` との類似度 `Score(n, i)` を計算する。
-3. Softmax で重み `α_i` を生成する。
-
-```text
-Score(n, i) = x_n · x_i
-α_i = softmax(Score(n,1), ..., Score(n,n-1))
-Context_n = Σ_i α_i x_i
-```
-4. this.wordVectorを平坦化(raval)する。this.indexMapを平坦化する。
-
-
-### inputに対する返答の手順
-
-以下にはロジックとメッセージングが含まれているが、ロジックは EpisodePart.jsに、メッセージングはEpisodePart.worker.jsにそれぞれ集約する。メッセージングにはboradcastChannel(`biomebot-${botName}`)を使用する。
-
-1. 「特徴量行列の計算手順」の計算キャッシュを利用してmessageを共通の次元でベクトル化。historyに含まれるtextは「特徴量行列の計算手順」と同様の方法で畳み込む。
-2. 特徴量行列×messageのcos類似度を計算
-3. cos類似度のがfactor.precisionよりも大きい上位3行を選び(A)とする。一つもなかったら[]を返す。
-4. からランダムに一つを選び、その「次の行」をmessage化して返答とし、scoreをscore*factor.amplitudeとする。
-5. 4のmessage.targetがselfだった場合、出力messageを入力として1-4を実行し、もう一つの出力messaegeとする。
-6. historyにinputのmessageを追加する。
-7. 出力messageのリストを返す。
-
-### 他のパートが送信したinnerSpeechへの返答
-
-以下にはロジックとメッセージングが含まれているが、ロジックは EpisodePart.jsに、メッセージングはEpisodePart.worker.jsにそれぞれ集約する。メッセージングにはboradcastChannel(`biomebot-${botName}`)を使用する。
-
-1. 1-0の乱数を生成し、それがfactor.reactivityより小さかったら以下を実行する。
-2. 「特徴量行列の計算手順」の計算キャッシュを利用してmessageを共通の次元でベクトル化
-3. 特徴量行列×messageのcos類似度を計算
-4. cos類似度のがfactor.precisionよりも大きい上位3行を選び(A)とする。一つもなかったら終了。
-5. からランダムに一つを選び、その「次の行」をmessage化して返答としてinnerSpeechとして配信する。
-
-### outputを受信したときの対応
-
-メッセージングにはboradcastChannel(`biomebot-${botName}`)を使用する。
-
-orchestratorというpartがinnerSpeechを統合してoutputを送信してくる。このoutputを受信したらhistoryにoutputのmessageを追加する。
-
-## partの管理
-workerのpostMessage/onmessageを使用し、kernelとの間でactivate/deactivate/report/terminateを行う。
+**作成日**: 2026-08-14  
+**ステータス**: ドキュメント分割中（フェーズ 1）
