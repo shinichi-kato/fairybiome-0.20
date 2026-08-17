@@ -223,12 +223,17 @@ export class Biomebot {
   どちらも指定されなければ、botNameに紐づく全てのパートを有効化する。
   */
   async activate(request) {
-    const { botName, partNames, excludedPartNames } = request;
+    const { 
+      botName, 
+      partNames=[...this.botPartMap[botName]],
+      excludedPartNames =[]
+    } = request;
 
     if (!(botName in this.botPartMap)) {
       throw new Error(`invalid botName ${botName}`);
     }
     const botState = this.botStates[botName];
+
     const targetPartNames = partNames.filter(
       partName => { !excludedPartNames.includes(partName) && partName in this.botPartMap[botName] });
     // Process all parts in parallel
@@ -300,7 +305,11 @@ export class Biomebot {
   }
 
   async deactivate(request) {
-    const { botName, partNames, excludedPartNames } = request;
+    const { 
+      botName, 
+      partNames=[...this.botPartMap[botName]],
+      excludedPartNames =[]
+    } = request;
 
     if (!(botName in this.botPartMap)) {
       throw new Error(`invalid botName ${botName}`);

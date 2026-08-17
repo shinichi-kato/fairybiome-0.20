@@ -298,14 +298,14 @@ vec_text_weighted = vec_text_norm.map(v => v * weights.text);
 
 ```javascript
 const allWeightedVecs = [
-  vec_role_weighted,      // 長さ 1 (word embedding)
+  vec_role_weighted,      // 長さ 可変 (word embedding)
   vec_text_weighted,      // 長さ: 単語数による可変
-  vec_target_weighted,    // 長さ 1
+  vec_target_weighted,    // 長さ 可変 (word embedding)
   vec_date_weighted,      // 長さ 2
   vec_time_weighted,      // 長さ 2
   vec_emo_weighted,       // 長さ 2
-  vec_facing_weighted,    // 長さ 1
-  vec_location_weighted   // 長さ 1
+  vec_facing_weighted,    // 長さ 可変 (word embedding)
+  vec_location_weighted   // 長さ 可変 (word embedding)
 ];
 
 const concatenated = allWeightedVecs.flat();

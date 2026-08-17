@@ -5,7 +5,7 @@
         "comment": "角度0度"
     },
     {
-        "surfaces": ["trust","信頼","信じる","信用してる","嫌いじゃない","嫌じゃない"],
+        "surfaces": ["trust","信頼","信じる","信用してる","安心感","嫌じゃない","嫌いじゃない","受容"],
         "embedding": {"{emo_trust_sin}": 0.7071, "{emo_trust_cos}":0.7071},
         "comment": "角度45度"
     },
@@ -38,5 +38,10 @@
         "surfaces": ["anticipation","期待","気になる","警戒"],
         "embedding": {"{emo_anticipation_sin}": -0.7071, "{emo_anticipation_cos}":0.7071},
         "comment": "角度315度"
+    },
+    {
+        "surfaces": ["neutral","平静","普通","平常心"],
+        "embedding": {"{emo_anticipation_sin}": 0, "{emo_anticipation_cos}":0},
+        "comment": "原点"
     }
 ]

@@ -11,127 +11,73 @@
 export class FeatureExtractor {
   constructor(emotionEmbeddings = null) {
     // 感情 → 角度のマッピング（feature_emo.embed.json から動的に構築）
-    this.emotionToAngle = this._buildEmotionToAngle(emotionEmbeddings);
+    this.emotionToVector = this._buildEmotionToVector(emotionEmbeddings);
 
     // RBF kernel のセンター点（[0, 1] の正規化空間）
     this.rbfCenters = [0, 0.25, 0.5, 0.75, 1.0];
     this.rbfGamma = 1.0;  // RBF kernel の幅パラメータ
   }
 
-  /**
-   * feature_emo.embed.json から emotionToAngle マップを構築
-   * @private
-   * @param {object[]|null} emotionEmbeddings - JSON配列またはnull
-   * @returns {object} - {surface: angle_deg, ...}
-   */
-  _buildEmotionToAngle(emotionEmbeddings) {
+  _buildEmotionToVector(emotionEmbeddings) {
     const map = {};
 
-    if (Array.isArray(emotionEmbeddings)) {
-      emotionEmbeddings.forEach((entry) => {
-        if (!entry || typeof entry !== 'object') {
-          return;
-        }
+    if (!Array.isArray(emotionEmbeddings)) {
+      return map;
+    }
 
-        // embeddings または embedding キーから sin/cos を抽出
-        const emb = entry.embeddings || entry.embedding;
-        if (!emb || typeof emb !== 'object') {
-          return;
-        }
+    emotionEmbeddings.forEach((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return;
+      }
 
-        // {emo_*_sin}, {emo_*_cos} パターンから値を抽出
-        let sin = 0;
-        let cos = 1; // デフォルトは 0度
+      // embeddings または embedding キーから sin/cos を抽出
+      const emb = entry.embeddings || entry.embedding;
+      if (!emb || typeof emb !== 'object') {
+        return;
+      }
 
-        Object.entries(emb).forEach(([key, value]) => {
-          if (typeof value !== 'number') return;
+      let sin = null;
+      let cos = null;
 
-          if (key.includes('_sin')) {
-            sin = value;
-          } else if (key.includes('_cos')) {
-            cos = value;
-          }
-        });
+      Object.entries(emb).forEach(([key, value]) => {
+        if (typeof value !== 'number') return;
 
-        // atan2(sin, cos) → ラジアン → 度数（0-360）
-        const angleRad = Math.atan2(sin, cos);
-        const angleDeg = (angleRad * 180 / Math.PI + 360) % 360;
-
-        // 全ての surfaces にこの角度を割り当て
-        // 英語は小文字でも大文字でもマッチするようにする
-        if (Array.isArray(entry.surfaces)) {
-          entry.surfaces.forEach((surface) => {
-            if (typeof surface === 'string' && surface.length > 0) {
-              // そのまま追加
-              map[surface] = angleDeg;
-              // 英語のみ：小文字版も追加（後方互換性）
-              if (/^[a-z]+$/i.test(surface)) {
-                map[surface.toLowerCase()] = angleDeg;
-              }
-            }
-          });
+        if (key.endsWith('_sin')) {
+          sin = value;
+        } else if (key.endsWith('_cos')) {
+          cos = value;
         }
       });
-    }
 
-    // デフォルト（フォールバック）
-    if (Object.keys(map).length === 0) {
-      return {
-        // 英名（8基本感情）
-        'joy': 0,
-        'trust': 45,
-        'fear': 90,
-        'surprise': 135,
-        'sadness': 180,
-        'disgust': 225,
-        'anger': 270,
-        'anticipation': 315,
-        
-        // 英語エイリアス
-        'happy': 0,
-        'laugh': 0,
-        'sad': 180,
-        'angry': 270,
-        'afraid': 90,
-        'surprised': 135,
-        'disgusted': 225,
-        'anticipate': 315,
+      if (sin === null || cos === null) {
+        sin=0;
+        cos=0;
+      }
 
-        // 日本語（基本感情と同義語）
-        '喜び': 0,
-        '嬉しい': 0,
-        '楽しい': 0,
-        'たのしい': 0,
-        '信頼': 45,
-        '信じる': 45,
-        '信用してる': 45,
-        '怖い': 90,
-        '恐い': 90,
-        '恐れてる': 90,
-        '恐ろしい': 90,
-        '恐怖': 90,
-        '不安': 90,
-        '驚き': 135,
-        'びっくり': 135,
-        '驚いた': 135,
-        '悲しい': 180,
-        '悲しみ': 180,
-        '悲哀': 180,
-        '嫌悪': 225,
-        '嫌い': 225,
-        'おぞましい': 225,
-        '怒り': 270,
-        '怒ってる': 270,
-        'ムカつく': 270,
-        '腹たつ': 270,
-        '期待': 315,
-        '気になる': 315,
-        '警戒': 315,
-      };
-    }
+      // 角度に変換せず、[sin, cos] の配列（ベクトル）のまま保存
+      const vector = [sin, cos];
+
+      // 全ての surfaces にこのベクトルを割り当て
+      if (Array.isArray(entry.surfaces)) {
+        entry.surfaces.forEach((surface) => {
+          if (typeof surface === 'string' && surface.trim().length > 0) {
+            const cleanSurface = surface.trim();
+            
+            // そのまま追加
+            map[cleanSurface] = vector;
+            
+            // 英字が含まれる場合：小文字版も追加（後方互換性）
+            if (/[a-zA-Z]/.test(cleanSurface)) {
+              map[cleanSurface.toLowerCase()] = vector;
+            }
+          }
+        });
+      }
+    });
 
     return map;
   }
+
 
   /**
    * Date （日付）→ [sin, cos] ベクトル化
@@ -195,21 +141,11 @@ export class FeatureExtractor {
    */
   extractEmotion(emotionStr) {
     if (!emotionStr || typeof emotionStr !== 'string') {
-      return [0, 1];  // 中立：0度
+      return [0, 0];  // 中立
     }
 
     const emotion = emotionStr.trim();  // 大文字小文字区別なし（精密マッチ）
-    let angleDeg = this.emotionToAngle[emotion];
-
-    if (typeof angleDeg !== 'number') {
-      // 未登録の感情は中立 (0度) にマップ
-      angleDeg = 0;
-    }
-
-    // 度数 → ラジアン
-    const theta = angleDeg * Math.PI / 180;
-
-    return [Math.sin(theta), Math.cos(theta)];
+    return this.emotionToVector[emotion];
   }
 
   /**

@@ -13,6 +13,9 @@ Orchestraotor
 }
 ```
 
+## deploy
+全てのpartをactivateするkernel向け司令を送信する。
+
 ## 動作機序
 ```mermaid
 sequenceDiagram

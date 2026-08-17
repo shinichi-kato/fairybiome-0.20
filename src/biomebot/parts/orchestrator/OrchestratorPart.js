@@ -25,8 +25,12 @@ export class OrchestratorPart extends Part {
     this.factor = { ...factor, intervals_msec: intervals };
     return true;
   }
-  deploy() {
 
+  /*
+  * 全てのpartをactivate
+  */
+  deploy() {
+    postMessage({type:"activate",botName:this.botName})
   }
 
   /*
