@@ -25,16 +25,16 @@ participant Kernel
 participant PartWorkers@{ "type" : "collections" }
     Outer->>Kernel: send()
     Kernel-)PartWorkers: input
-    PartWorkers-)PartWorkers: innerSpeech
-    PartWorkers-)OrchestratorWorker: innerSpeech
+    PartWorkers-)PartWorkers: innerVoice
+    PartWorkers-)OrchestratorWorker: innerVoice
     OrchestratorWorker-)Kernel: output
     Kernel->>Outer: callback関数
 ```
-外部からの刺激は他のチャットボットやユーザからの発言とエコシステムからの入力である。入力を受け取ったらkernelがbroadcast Channelでこれらを `{type: 'input'}`として配信。すべてのactive状態のパートが受信する。受信したパートは回答したければ`{type: "innerSpeech"}` としてbroadcastChannelに送信する。
-また、パートはinnerSpeechに対して反応して別のinnerSpeechを発言しても良い。
-Orchestratorは一定期間中のinnerSpeechを受信し、統合して `{type:"output"}`とする。これをうけとったkernelはコールバック関数でこれをUIに渡す。
+外部からの刺激は他のチャットボットやユーザからの発言とエコシステムからの入力である。入力を受け取ったらkernelがbroadcast Channelでこれらを `{type: 'input'}`として配信。すべてのactive状態のパートが受信する。受信したパートは回答したければ`{type: "innerVoice"}` としてbroadcastChannelに送信する。
+また、パートはinnerVoiceに対して反応して別のinnerVoiceを発言しても良い。
+Orchestratorは一定期間中のinnerVoiceを受信し、統合して `{type:"output"}`とする。これをうけとったkernelはコールバック関数でこれをUIに渡す。
 
-### innerSpeech
+### innerVoice
 endologue -> {target: "self"} 
 exologue -> {target: "other"}
 biomebotでは様々なpartがまず内言のかたちで各々発言し、それらをまとめて外言としてoutputする。ここで人間における発言のメカニズムを大雑把に捉えると、まず内言がいくつか行われ、それらを統合して外言として出力すると思われる。

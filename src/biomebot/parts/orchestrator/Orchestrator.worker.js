@@ -36,8 +36,8 @@
                         });
                         break;
                     }
-                    case 'innerSpeech': {
-                        orchestratorPart.receiveInnerSpeech(payload.message);
+                    case 'innerVoice': {
+                        orchestratorPart.receiveinnerVoice(payload.message);
                         break;
                     }
                     default:

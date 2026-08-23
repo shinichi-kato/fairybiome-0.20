@@ -102,23 +102,23 @@ Kernel から EpisodePartWorker へのメッセージ：
 }
 ```
 
-#### 3. inputInnerSpeech
+#### 3. inputinnerVoice
 
 ```javascript
 {
-  type: 'inputInnerSpeech',
+  type: 'inputinnerVoice',
   message: Message
 }
 ```
 
 **処理:**
-- `EpisodePart.inputInnerSpeech(message)` を実行
-- 反応ありの場合、BroadcastChannel で innerSpeech を配信
+- `EpisodePart.inputinnerVoice(message)` を実行
+- 反応ありの場合、BroadcastChannel で innerVoice を配信
 
 **返答:**
 ```javascript
 {
-  type: 'ackInnerSpeech'
+  type: 'ackinnerVoice'
 }
 ```
 
@@ -217,10 +217,10 @@ self.onmessage = async (event) => {
         response = { type: 'output', messages };
         break;
 
-      case 'inputInnerSpeech':
+      case 'inputinnerVoice':
         if (!isActive) throw new Error('Part not active');
-        await part.inputInnerSpeech(payload.message);
-        response = { type: 'ackInnerSpeech' };
+        await part.inputinnerVoice(payload.message);
+        response = { type: 'ackinnerVoice' };
         break;
 
       case 'report':
@@ -266,21 +266,21 @@ biomebot-${botName}
 
 ### メッセージタイプ
 
-#### innerSpeech（配信）
+#### innerVoice（配信）
 
 ```javascript
 {
-  type: 'innerSpeech',
+  type: 'innerVoice',
   payload: Message
 }
 ```
 
 **送信条件:**
-- `inputInnerSpeech()` で反応判定が OK
+- `inputinnerVoice()` で反応判定が OK
 - `factor.reactivity` をクリア
 
 **受信者:**
-- orchestrator パート（innerSpeech を統合）
+- orchestrator パート（innerVoice を統合）
 - 他のパート（相互作用）
 
 #### output（配信）
@@ -293,7 +293,7 @@ biomebot-${botName}
 ```
 
 **送信者:**
-- orchestrator パート（innerSpeech を統合した最終出力）
+- orchestrator パート（innerVoice を統合した最終出力）
 
 **受信者:**
 - EpisodePart（history に記録）

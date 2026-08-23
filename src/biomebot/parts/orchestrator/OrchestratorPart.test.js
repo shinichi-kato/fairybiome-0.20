@@ -20,7 +20,7 @@ describe('OrchestratorPart', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
 
     const part = new OrchestratorPart();
-    part.innerSpeechPool = [
+    part.innerVoicePool = [
       new Message({
         role: 'bot',
         text: 'other message',

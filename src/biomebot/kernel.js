@@ -555,7 +555,7 @@ export class Biomebot {
             });
             break;
           case 'output': {
-            // orchestrator only emits final output; other parts emit innerSpeech.
+            // orchestrator only emits final output; other parts emit innerVoice.
             const botName = event.botName;
             const botState = this.botStates?.[botName];
             if (botState?.[null]) {

@@ -27,14 +27,14 @@ onmessage = async (messageEvent) => {
           case 'input': {
             const messages = episodePart.input(payload.message);
             for (const message of messages) {
-              broadcastChannel.postMessage({ type: 'innerSpeech', message });
+              broadcastChannel.postMessage({ type: 'innerVoice', message });
             }
             break;
           }
-          case 'innerSpeech': {
-            const messages = episodePart.inputInnerSpeech(payload.message);
+          case 'innerVoice': {
+            const messages = episodePart.inputinnerVoice(payload.message);
             for (const message of messages) {
-              broadcastChannel.postMessage({ type: 'innerSpeech', message });
+              broadcastChannel.postMessage({ type: 'innerVoice', message });
             }
             break;
           }

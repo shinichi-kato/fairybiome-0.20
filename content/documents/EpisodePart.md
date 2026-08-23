@@ -143,7 +143,7 @@ History に記録
 ```
 Inner Speech Message (from orchestrator)
       ↓
-EpisodePart.inputInnerSpeech()
+EpisodePart.inputinnerVoice()
       ↓
 Reactivity check (random < factor.reactivity)
       ↓
@@ -191,7 +191,7 @@ orchestrator が収集
 |-----------|------|------|
 | `amplitude` | [0, 1] | 返答スコアの減衰係数 |
 | `precision` | [0, 1] | 類似度しきい値（高 = 厳選） |
-| `reactivity` | [0, 1] | innerSpeech 反応確率 |
+| `reactivity` | [0, 1] | innerVoice 反応確率 |
 | `weight.*` | [0, 1] | 各特徴量の重み付け係数 |
 
 ---

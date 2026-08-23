@@ -83,7 +83,7 @@ export class EpisodePart extends Part {
     })];
   }
 
-  inputInnerSpeech(message) {
+  inputinnerVoice(message) {
     return this.input(message);
   }
 

@@ -1,4 +1,4 @@
-# 返答ロジック — 入力・innerSpeech・出力の処理
+# 返答ロジック — 入力・innerVoice・出力の処理
 
 この文書は、EpisodeStorage が入力メッセージを受け取ってから、返答を生成するまでのロジックを説明します。3 つのシナリオをカバー：
 
@@ -38,7 +38,7 @@
                   ↓
 ┌──────────────────────────────────────┐
 │ 4. 返答の生成                        │
-│    (message or innerSpeech)          │
+│    (message or innerVoice)          │
 └──────────────────────────────────────┘
 ```
 
@@ -139,7 +139,7 @@ async input(message) {
 
 ### 目的
 
-他のパート（例：orchestrator）が配信した innerSpeech に対して、EpisodePart が「反応」するかどうかをランダムに判定し、反応する場合は innerSpeech として返答を配信。
+他のパート（例：orchestrator）が配信した innerVoice に対して、EpisodePart が「反応」するかどうかをランダムに判定し、反応する場合は innerVoice として返答を配信。
 
 ### アルゴリズム
 
@@ -162,7 +162,7 @@ async input(message) {
    - 候補から 1 行を選択
 
 6. **返答生成**
-   - 次の行を innerSpeech として配信
+   - 次の行を innerVoice として配信
    - **重要**: User Input と異なり、自動返答はしない（自問自答なし）
 
 7. **Broadcasting**
@@ -171,7 +171,7 @@ async input(message) {
 ### 疑似コード
 
 ```javascript
-async inputInnerSpeech(message) {
+async inputinnerVoice(message) {
   // 1. 反応性判定
   const random = Math.random();
   if (random >= this.factor.reactivity) {
@@ -208,7 +208,7 @@ async inputInnerSpeech(message) {
   // 7. Broadcasting
   const channel = new BroadcastChannel(`biomebot-${this.botName}`);
   channel.postMessage({
-    type: 'innerSpeech',
+    type: 'innerVoice',
     payload: outputMessage
   });
   channel.close();
@@ -229,7 +229,7 @@ async inputInnerSpeech(message) {
 
 ### 目的
 
-orchestrator が複数の innerSpeech を統合して最終出力（output）を生成し、それを EpisodePart に通知。EpisodePart は output を history に記録するのみ。
+orchestrator が複数の innerVoice を統合して最終出力（output）を生成し、それを EpisodePart に通知。EpisodePart は output を history に記録するのみ。
 
 ### アルゴリズム
 
@@ -291,7 +291,7 @@ async embedMessage(message) {
 {
   amplitude: number,      // [0, 1] 返答スコアの振幅（減衰）
   precision: number,      // [0, 1] 類似度のしきい値
-  reactivity: number,     // [0, 1] innerSpeech への反応確率
+  reactivity: number,     // [0, 1] innerVoice への反応確率
   weight: {
     role: 0.2,            // 各列の重み（正規化時の重み付け係数）
     text: 0.3,
@@ -310,7 +310,7 @@ async embedMessage(message) {
 
 - **amplitude**: 返答の確度・信頼度を表す。高いほど「確信度が高い返答」を表現（スコア = 類似度 × amplitude）
 - **precision**: 検索のしきい値。低いほど「曖昧な返答も許容」、高いほど「完全一致のみ」
-- **reactivity**: innerSpeech への反応性。低いと反応が少ない、高いと頻繁に反応
+- **reactivity**: innerVoice への反応性。低いと反応が少ない、高いと頻繁に反応
 
 ---
 
@@ -323,19 +323,19 @@ async embedMessage(message) {
 const channel = new BroadcastChannel(`biomebot-${botName}`);
 channel.onmessage = (event) => {
   const { type, payload } = event.data;
-  // type: 'innerSpeech' | 'output' など
+  // type: 'innerVoice' | 'output' など
 };
 
 // 送信側
 const channel = new BroadcastChannel(`biomebot-${botName}`);
-channel.postMessage({ type: 'innerSpeech', payload: message });
+channel.postMessage({ type: 'innerVoice', payload: message });
 ```
 
 ### メッセージ構造
 
 ```javascript
 {
-  type: 'innerSpeech' | 'output',
+  type: 'innerVoice' | 'output',
   payload: {
     role: 'bot' | 'user',
     text: string,
@@ -390,7 +390,7 @@ try {
 ### ロジック側（EpisodePart.js）
 - `receive(message)` — 類似度計算・候補選択
 - `input(message)` — User Input 処理（自問自答含む）
-- `inputInnerSpeech(message)` — Inner Speech 処理
+- `inputinnerVoice(message)` — Inner Speech 処理
 
 ### メッセージング側（EpisodePart.worker.js）
 - BroadcastChannel の設定・リスニング

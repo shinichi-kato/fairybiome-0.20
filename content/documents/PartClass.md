@@ -60,22 +60,22 @@ broadcastChannel(`biomebot-${botName}`)を使用
 ```
 **処理**
 active状態の各パートはメッセージを受取り、返答をするか決める。
-返答する場合は下記innerSpeechメッセージを使用する。
+返答する場合は下記innerVoiceメッセージを使用する。
 **返すメッセージ**
 なし
 
-### innerSpeech(part->part)
+### innerVoice(part->part)
 **受け取るメッセージ**
 ```
-{type: 'innerSpeech',message}
+{type: 'innerVoice',message}
 ```
 **処理**
 active状態の各パートはメッセージを受取り、返答をするか決める。
-返答する場合はinnerSpeechメッセージを使用する。
+返答する場合はinnerVoiceメッセージを使用する。
 **返すメッセージ**
 
 ### 返答の送出(part->ui)
-partを継承したクラスorchestratorはinnerSpeechを受信し、統合してUI側に返答する。
+partを継承したクラスorchestratorはinnerVoiceを受信し、統合してUI側に返答する。
 **送出するメッセージ**
 ```
 {type: 'botPost',message}

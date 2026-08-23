@@ -13,7 +13,7 @@ import { Message } from '../../../Message.js';
 export class OrchestratorPart extends Part {
   constructor() {
     super();
-    this.innerSpeechPool = [];
+    this.innerVoicePool = [];
     this.inputQueue = [];
   }
 
@@ -34,10 +34,10 @@ export class OrchestratorPart extends Part {
   }
 
   /*
-  ポーリング中に受信した他のpartからのinnerSpeechを蓄積
+  ポーリング中に受信した他のpartからのinnerVoiceを蓄積
   */
-  receiveInnerSpeech(message) {
-    this.innerSpeechPool.push(new Message(message));
+  receiveinnerVoice(message) {
+    this.innerVoicePool.push(new Message(message));
   }
 
   polling() {
@@ -57,12 +57,12 @@ export class OrchestratorPart extends Part {
   }
 
   integrate() {
-    const otherCandidates = this.innerSpeechPool
+    const otherCandidates = this.innerVoicePool
       .filter((message) => message.target === 'other')
       .sort((a, b) => (b.props?.score ?? 0) - (a.props?.score ?? 0))
       .slice(0, 3);
 
-    const selfCandidates = this.innerSpeechPool
+    const selfCandidates = this.innerVoicePool
       .filter((message) => message.target === 'self')
       .sort((a, b) => (b.props?.score ?? 0) - (a.props?.score ?? 0))
       .slice(0, 3);
@@ -72,7 +72,7 @@ export class OrchestratorPart extends Part {
 
     const output = this._buildOutput(chosenOther, chosenSelf);
 
-    this.innerSpeechPool = [];
+    this.innerVoicePool = [];
     this.inputQueue = [];
 
     return output;
