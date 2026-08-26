@@ -26,6 +26,8 @@ await biomebot.input(botName, message);
 
 */
 const workerRoot="/src/biomebot/parts";
+
+// ファイル名で起動するworkerを切り替える
 const workerURL = {
   "episode": `${workerRoot}/episode/EpisodePart.worker.js`,
   "orchestator": `${workerRoot}/orchestrator/OrcehstratorPart.worker.js`,
