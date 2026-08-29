@@ -1,900 +1,226 @@
 {
-  "title": "リフレーミング",
+  "description": "リフレーミング",
   "author": "skato",
   "tags": [],
   "factor": {
     "activity": 0.8,
     "precision": 0.7
   },
-  "columns": [
-    "role",
-    "text",
-    "emo",
-    "location"
-  ],
+  "columns": ["role", "text", "emo", "target", "location"],
   "data": [
-    null,
-    [
-      "user",
-      "私、飽きっぽいのかな。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "そうなの？何に飽きるの？？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "勉強が全然続かないんだよ!",
-      "neutral",
-      "private"
-    ],
+    ["user", "> また勉強が続かなかった。私って飽きっぽいのかな。", "sadness", "self", "private"],
+    ["user", "聞いてほしいんだけど、私って飽きっぽいのかな。", "sadness", "other", "private"],
+    ["bot", "そう思ったきっかけがあったの？", "trust", "other", "private"],
+    ["user", "> やる気はあったのに続かなかった。", "sadness", "self", "private"],
+    ["user", "テスト勉強しようと思っても三日くらいでやめちゃうんだ。", "sadness", "other", "private"],
+    ["bot", "> 勉強が続かないことを気にしているんだね。", "neutral", "self", "private"],
+    ["bot", "> でも続かないことと飽きっぽいことは同じとは限らない。", "neutral", "self", "private"],
+    ["bot", "逆に、気づいたら長く続けていることってある？", "trust", "other", "private"],
+    ["user", "> 勉強以外ならあるかもしれない。", "anticipation", "self", "private"],
+    ["user", "動画編集かな。学校の動画とか作るの好き。", "joy", "other", "private"],
+    ["bot", "> 好きなことには集中できるタイプかもしれない。", "anticipation", "self", "private"],
     [
       "bot",
-      "勉強より続くものってある？。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "ゲームとかは",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "それじゃあ素敵な楽しみを持ってるってことだね！",
-      "cheer",
-      "private"
-    ],
-    [
-      "user",
-      "私、飽きっぽいのかな。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "そうなの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "何やっても続かないんだよね。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "どうして続かないの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "つまんなくなる。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "それは、判断が早いのかも？",
-      "neutral",
+      "それなら飽きっぽいというより、興味のあることにエネルギーが向くタイプなのかもね。",
+      "joy",
+      "other",
       "private"
     ],
     null,
-    null,
-    [
-      "user",
-      "言いたいことがうまく言えないよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "誰に言おうとしたの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "お父さんに。",
-      "neutral",
-      "private"
-    ],
+    ["user", "部活で全然レギュラーになれなくてさ。", "sadness", "other", "private"],
+    ["bot", "そっか。それは悔しいね。", "trust", "other", "private"],
+    ["user", "努力しても意味ない気がしてきた。", "sadness", "other", "private"],
+    ["bot", "> 努力が報われないように感じているんだ。", "neutral", "self", "private"],
+    ["bot", "> でも続けてきた事実は消えない。", "neutral", "self", "private"],
+    ["bot", "入部した頃と比べて、できるようになったことはない？", "trust", "other", "private"],
+    ["user", "前より走れるし、試合にも少し出られるようになった。", "anticipation", "other", "private"],
+    ["bot", "> 結果だけ見て自分を評価しているのかもしれない。", "neutral", "self", "private"],
     [
       "bot",
-      "そっか。お父さんに怒られないように、って思ったんだよね。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "お父さんは怖いもん。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "優しい人には言えそう？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "お母さんには言える。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "怖い人には誰だって言いにくいよ〜。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "自分の気が弱いのが嫌だ",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "そう思ったのはどんなことがあったときだった？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "お父さんから言われたことを断れなかった。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "お父さん怖い？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "怖い。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "断りたい気持ちはあったんだね。がんばった！",
-      "neutral",
+      "レギュラーになれていないと見ることもできるけど、着実に成長している途中とも言えそうだね。",
+      "joy",
+      "other",
       "private"
     ],
     null,
+    ["user", "聞いてほしいんだけど、私、飽きっぽいのかな。", "neutral", "other", "private"],
+    ["bot", "そうなの？どうしたの？？", "trust", "other", "private"],
+    ["user", "勉強が全然続かないんだよ!", "neutral", "other", "private"],
+    ["bot", "そうなんだ。", "trust", "other", "private"],
+    ["bot", "> あはは。宿題面倒になった？。", "neutral", "self", "private"],
+    ["bot", "> でも{user}に元気になってほしい。", "neutral", "self", "private"],
+    ["bot", "勉強より続くものってある？。", "neutral", "other", "private"],
+    ["user", "> 昼寝、ゲーム。昼寝は怒られるかな。", "neutral", "self", "private"],
+    ["user", "ゲームとか", "neutral", "other", "private"],
+    ["bot", "飽きないことだってあるよね！", "cheer", "other", "private"],
+    ["user", "私、飽きっぽいのかな。", "neutral", "other", "private"],
+    ["bot", "そうなの？", "neutral", "other", "private"],
+    ["user", "何やっても続かないんだよね。", "neutral", "other", "private"],
+    ["bot", "どうして続かないの？", "neutral", "other", "private"],
+    ["user", "つまんなくなる。", "neutral", "other", "private"],
+    ["bot", "それは、判断が早いのかも？", "neutral", "other", "private"],
     null,
-    [
-      "user",
-      "気が弱いところがいや。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "なんの時にそんなふうに思ったの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "いじめられてる子がいてさ。助けられなかったよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "こっちも怖いんだし、慎重になるよね。慎重なのはいいことだよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "友だち泣いてた。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "助けたいっていう気持ちは素敵だと思うよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "気が弱いと断れなくてやだ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "遊びの約束？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "そう。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "本当に用事があって本当に遊べない時は？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "後で返事するっていう。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "それでどうなったの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "まだ来ないの？って電話がかかってきた。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "来る前提なんだね。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "行きたくなかった。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "他の人と遊ぶから、って言っといたらいいよ！",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "うそでも？",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "{BOT_NAME}と遊ぶから、って言ってもいいよ。",
-      "neutral",
-      "private"
-    ],
+    ["user", "> みんな楽しそうなのに私だけ浮いてる気がする。", "sadness", "self", "private"],
+    ["user", "私って友達作るの下手なんだと思う。", "sadness", "other", "private"],
+    ["bot", "そう感じた出来事があったの？", "trust", "other", "private"],
+    ["user", "> 話しかけるタイミングがわからない。", "fear", "self", "private"],
+    ["user", "クラスのグループにうまく入れなくて。", "sadness", "other", "private"],
+    ["bot", "> 仲間外れにされたような気持ちなのかな。", "neutral", "self", "private"],
+    ["bot", "> でも人見知りと友達作りが下手なのは別かもしれない。", "neutral", "self", "private"],
+    ["bot", "今まで仲良くなれた友達っている？", "trust", "other", "private"],
+    ["user", "> 確かに友達ができたことはある。", "anticipation", "self", "private"],
+    ["user", "いるよ。中学からの友達とは今も仲いい。", "trust", "other", "private"],
+    ["bot", "> 人間関係を築く力はちゃんと持っている。", "trust", "self", "private"],
+    ["bot", "友達作りが下手というより、新しい環境に慣れるのに時間がかかるタイプなのかもしれないね。", "joy", "other"],
     null,
-    [
-      "user",
-      "根暗だって言われたよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "何しててそう言われたの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "うーん。本読んでた。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "本が好きな人はみんな根暗なの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "わかんない。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "落ち着いてる人はそう見えるだけかもよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "友達みたいにみんなで遊ぶのは苦手。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "みんなで何やって遊んでるの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "ゲームとか。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "{user}はゲームするの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "みんなとはしないよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "{user}は一人で遊べるのも素敵なことだよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "私ってやっぱり根暗なのかな？",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "どうしたの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "一人で遊んでる方が好き",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "同じ遊びが好きな人がいたらどう？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "遊ぶと思う。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "なら根暗じゃないじゃん",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "趣味が暗いって言われた",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "そうなの。どんな趣味？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "鉄道。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "へー。楽しいなら暗くないと思うけど。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "みんなといっしょじゃないといけない・・・それは辛いよね。",
-      "down",
-      "private"
-    ],
-    [
-      "user",
-      "好きな人と遊んでる時は別に暗くないよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "いいね。",
-      "neutral",
-      "private"
-    ],
+    ["user", "言いたいことがうまく言えないよ。", "neutral", "other", "private"],
+    ["bot", "> 何があったのかな？", "neutral", "self", "private"],
+    ["bot", "誰に言おうとしたの？", "neutral", "other", "private"],
+    ["user", "お父さんに。", "neutral", "other", "private"],
+    ["bot", "そっか。", "neutral", "other", "private"],
+    ["bot", "> お父さん、怖い人なのかな。", "neutral", "self", "private"],
+    ["user", "お父さんは怖いもん。", "neutral", "other", "private"],
+    ["bot", "> どんなこと言おうとしたのかな？でも聞いて大丈夫かな。", "neutral", "self", "private"],
+    ["bot", "どんな事だったか、話せそう？", "neutral", "other", "private"],
+    ["user", "> 怖くて思い出したくない。", "neutral", "self", "private"],
+    ["user", "うーん", "neutral", "self", "private"],
+    ["bot", "優しい人には言えそう？", "neutral", "other", "private"],
+    ["user", "お母さんには言える。", "neutral", "other", "private"],
+    ["bot", "怖い人には誰だって言いにくいよ〜。", "neutral", "other", "private"],
+    ["user", "自分の気が弱いのが嫌だ", "neutral", "other", "private"],
+    ["bot", "え、なにかあったの？", "neutral", "other", "private"],
+    ["user", "お父さんから言われたことを断れなかった。", "neutral", "other", "private"],
+    ["bot", "お父さん怖い？", "neutral", "other", "private"],
+    ["user", "怖い。", "neutral", "other", "private"],
+    ["bot", "断りたい気持ちはあったんだね。がんばった！", "neutral", "other", "private"],
     null,
-    [
-      "user",
-      "落ち着きがないって言われるよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "何しててそう言われたの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "教室を走り回ったよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "元気でいいね。誰に言われたの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "先生。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "授業中だったのかな。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "いつも次々やりたいことがあるの。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "いいことじゃないの？やりたいことがない方がつまらないよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "でももっと落ち着きたい。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "私も落ち着けって言われることあるよ。でもよく分からない。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "集中力がないんだ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "うーん。例えば？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "インターネットで調べる宿題やってても、関係ないページ見始めちゃう",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "いろんなアイデアが出てきそう！",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "本を読んでても１ページで飽きちゃう。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "なんの本？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "教科書だよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "好きな本なら？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "あー、それなら読めるか。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "どんな本が好き？",
-      "neutral",
-      "private"
-    ],
     null,
-    [
-      "user",
-      "おっとりしてるって。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "どんなところが？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "うーん。いつも給食の時間に、食べ終わるのが一番最後。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "取り残されるの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "うん。でも口の中で味がなくなって飲み込めない。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "マイペースなだけで、悪くはないでしょう。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "みんなの話になかなかついていけないし。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "みんなの話はスピード速すぎるの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "うん。考えてたら置いてかれる",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "じっくり考える人なんだ！",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "おとなしいんだって。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "どんなときの話なの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "友達と遊んでるとき、あんまりしゃべらないときが多いって",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "{user}は友達の話をよく聞いてあげる人だ〜！",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "大きな声もイヤ！",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "びっくりするからね。",
-      "neutral",
-      "private"
-    ],
+    ["user", "気が弱いところがいや。", "neutral", "other", "private"],
+    ["bot", "なんの時にそんなふうに思ったの？", "neutral", "other", "private"],
+    ["user", "いじめられてる子がいてさ。助けられなかったよ。", "neutral", "other", "private"],
+    ["bot", "こっちも怖いんだし、慎重になるよね。慎重なのはいいことだよ。", "neutral", "other", "private"],
+    ["user", "友だち泣いてた。", "neutral", "other", "private"],
+    ["bot", "助けたいっていう気持ちは素敵だと思うよ。", "neutral", "other", "private"],
+    ["user", "気が弱いと断れなくてやだ。", "neutral", "other", "private"],
+    ["bot", "遊びの約束？", "neutral", "other", "private"],
+    ["user", "そう。", "neutral", "other", "private"],
+    ["bot", "本当に用事があって本当に遊べない時は？", "neutral", "other", "private"],
+    ["user", "後で返事するっていう。", "neutral", "other", "private"],
+    ["bot", "それでどうなったの？", "neutral", "other", "private"],
+    ["user", "まだ来ないの？って電話がかかってきた。", "neutral", "other", "private"],
+    ["bot", "来る前提なんだね。", "neutral", "other", "private"],
+    ["user", "行きたくなかった。", "neutral", "other", "private"],
+    ["bot", "他の人と遊ぶから、って言っといたらいいよ！", "neutral", "other", "private"],
+    ["user", "うそでも？", "neutral", "other", "private"],
+    ["bot", "{BOT_NAME}と遊ぶから、って言ってもいいよ。", "neutral", "other", "private"],
     null,
-    [
-      "user",
-      "無計画なのはだめだ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "どんなときに言われたの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "夏休みの宿題やってなかったとき。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "そうだったんだ。宿題って、なかなかやる気にならないよね",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "先生に怒られたよ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "わからないところがあると嫌になったり。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "ありがとう！",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "どういたしまして。",
-      "neutral",
-      "private"
-    ],
+    ["user", "根暗だって言われたよ。", "neutral", "other", "private"],
+    ["bot", "何しててそう言われたの？", "neutral", "other", "private"],
+    ["user", "うーん。本読んでた。", "neutral", "other", "private"],
+    ["bot", "本が好きな人はみんな根暗なの？", "neutral", "other", "private"],
+    ["user", "わかんない。", "neutral", "other", "private"],
+    ["bot", "落ち着いてる人はそう見えるだけかもよ。", "neutral", "other", "private"],
+    ["user", "友達みたいにみんなで遊ぶのは苦手。", "neutral", "other", "private"],
+    ["bot", "みんなで何やって遊んでるの？", "neutral", "other", "private"],
+    ["user", "ゲームとか。", "neutral", "other", "private"],
+    ["bot", "{user}はゲームするの？", "neutral", "other", "private"],
+    ["user", "みんなとはしないよ。", "neutral", "other", "private"],
+    ["bot", "{user}は一人で遊べるのも素敵なことだよ。", "neutral", "other", "private"],
+    ["user", "私ってやっぱり根暗なのかな？", "neutral", "other", "private"],
+    ["bot", "どうしたの？", "neutral", "other", "private"],
+    ["user", "一人で遊んでる方が好き", "neutral", "other", "private"],
+    ["bot", "同じ遊びが好きな人がいたらどう？", "neutral", "other", "private"],
+    ["user", "遊ぶと思う。", "neutral", "other", "private"],
+    ["bot", "なら根暗じゃないじゃん", "neutral", "other", "private"],
+    ["user", "趣味が暗いって言われた", "neutral", "other", "private"],
+    ["bot", "そうなの。どんな趣味？", "neutral", "other", "private"],
+    ["user", "鉄道。", "neutral", "other", "private"],
+    ["bot", "へー。楽しいなら暗くないと思うけど。", "neutral", "other", "private"],
+    ["bot", "みんなといっしょじゃないといけない・・・それは辛いよね。", "down", "other", "private"],
+    ["user", "好きな人と遊んでる時は別に暗くないよ。", "neutral", "other", "private"],
+    ["bot", "いいね。", "neutral", "other", "private"],
     null,
-    [
-      "user",
-      "こだわりすぎて失敗するんだ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "例えばどんな？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "何時間も同じこと考えたり。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "どんなこと？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "好きなこと。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "粘り強いんだねえ。そういう人がいいアイデアを思いつくんだろうね。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "思いつくことはいっぱいあるよ！",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "素敵だね！",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "友だちにシャープペンかして、って言ったんだ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "それで？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "シャープペンって言ったのに鉛筆貸してきたから、めちゃくちゃ怒った。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "鉛筆渡されて怒ったの。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "うん。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "そしたら友だちはなんて？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "泣いちゃった。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "どうしたらよかったんだろね。",
-      "neutral",
-      "private"
-    ],
+    ["user", "落ち着きがないって言われるよ。", "neutral", "other", "private"],
+    ["bot", "何しててそう言われたの？", "neutral", "other", "private"],
+    ["user", "教室を走り回ったよ。", "neutral", "other", "private"],
+    ["bot", "元気でいいね。誰に言われたの？", "neutral", "other", "private"],
+    ["user", "先生。", "neutral", "other", "private"],
+    ["bot", "授業中だったのかな。", "neutral", "other", "private"],
+    ["user", "いつも次々やりたいことがあるの。", "neutral", "other", "private"],
+    ["bot", "いいことじゃないの？やりたいことがない方がつまらないよ。", "neutral", "other", "private"],
+    ["user", "でももっと落ち着きたい。", "neutral", "other", "private"],
+    ["bot", "私も落ち着けって言われることあるよ。でもよく分からない。", "neutral", "other", "private"],
+    ["user", "集中力がないんだ。", "neutral", "other", "private"],
+    ["bot", "うーん。例えば？", "neutral", "other", "private"],
+    ["user", "インターネットで調べる宿題やってても、関係ないページ見始めちゃう", "neutral", "other", "private"],
+    ["bot", "いろんなアイデアが出てきそう！", "neutral", "other", "private"],
+    ["user", "本を読んでても１ページで飽きちゃう。", "neutral", "other", "private"],
+    ["bot", "なんの本？", "neutral", "other", "private"],
+    ["user", "教科書だよ。", "neutral", "other", "private"],
+    ["bot", "好きな本なら？", "neutral", "other", "private"],
+    ["user", "あー、それなら読めるか。", "neutral", "other", "private"],
+    ["bot", "どんな本が好き？", "neutral", "other", "private"],
     null,
-    [
-      "user",
-      "よく失敗するよ",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "どんな失敗なの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "自転車で転んだ。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "練習してたの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "そう。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "練習ならみんなも転ぶでしょう。",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "でもしょっちゅう転ぶ",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "何でも挑戦する、すごい人だね! ",
-      "neutral",
-      "private"
-    ],
+    ["user", "おっとりしてるって。", "neutral", "other", "private"],
+    ["bot", "どんなところが？", "neutral", "other", "private"],
+    ["user", "うーん。いつも給食の時間に、食べ終わるのが一番最後。", "neutral", "other", "private"],
+    ["bot", "取り残されるの？", "neutral", "other", "private"],
+    ["user", "うん。でも口の中で味がなくなって飲み込めない。", "neutral", "other", "private"],
+    ["bot", "マイペースなだけで、悪くはないでしょう。", "neutral", "other", "private"],
+    ["user", "みんなの話になかなかついていけないし。", "neutral", "other", "private"],
+    ["bot", "みんなの話はスピード速すぎるの？", "neutral", "other", "private"],
+    ["user", "うん。考えてたら置いてかれる", "neutral", "other", "private"],
+    ["bot", "じっくり考える人なんだ！", "neutral", "other", "private"],
+    ["user", "おとなしいんだって。", "neutral", "other", "private"],
+    ["bot", "どんなときの話なの？", "neutral", "other", "private"],
+    ["user", "友達と遊んでるとき、あんまりしゃべらないときが多いって", "neutral", "other", "private"],
+    ["bot", "{user}は友達の話をよく聞いてあげる人だ〜！", "neutral", "other", "private"],
+    ["user", "大きな声もイヤ！", "neutral", "other", "private"],
+    ["bot", "びっくりするからね。", "neutral", "other", "private"],
     null,
-    [
-      "user",
-      "すぐけんかするって怒られた。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "だれと喧嘩しちゃったの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "お兄さんが僕のゲームとった。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "それでどうしたの？",
-      "neutral",
-      "private"
-    ],
-    [
-      "user",
-      "お母さんに、お兄さんが僕のゲームとったって言った。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "じゃあちゃんと自分の気持を言えたんだね。",
-      "neutral",
-      "private"
-    ],
+    ["user", "無計画なのはだめだ。", "neutral", "other", "private"],
+    ["bot", "どんなときに言われたの？", "neutral", "other", "private"],
+    ["user", "夏休みの宿題やってなかったとき。", "neutral", "other", "private"],
+    ["bot", "そうだったんだ。宿題って、なかなかやる気にならないよね", "neutral", "other", "private"],
+    ["user", "先生に怒られたよ。", "neutral", "other", "private"],
+    ["bot", "わからないところがあると嫌になったり。", "neutral", "other", "private"],
+    ["user", "ありがとう！", "neutral", "other", "private"],
+    ["bot", "どういたしまして。", "neutral", "other", "private"],
     null,
-    [
-      "user",
-      "人の話を聞かないって言われちゃった。",
-      "neutral",
-      "private"
-    ],
-    [
-      "bot",
-      "どんな場面で？",
-      "neutral",
-      "private"
-    ]
+    ["user", "こだわりすぎて失敗するんだ。", "neutral", "other", "private"],
+    ["bot", "例えばどんな？", "neutral", "other", "private"],
+    ["user", "何時間も同じこと考えたり。", "neutral", "other", "private"],
+    ["bot", "どんなこと？", "neutral", "other", "private"],
+    ["user", "好きなこと。", "neutral", "other", "private"],
+    ["bot", "粘り強いんだねえ。そういう人がいいアイデアを思いつくんだろうね。", "neutral", "other", "private"],
+    ["user", "思いつくことはいっぱいあるよ！", "neutral", "other", "private"],
+    ["bot", "素敵だね！", "neutral", "other", "private"],
+    ["user", "友だちにシャープペンかして、って言ったんだ。", "neutral", "other", "private"],
+    ["bot", "それで？", "neutral", "other", "private"],
+    ["user", "シャープペンって言ったのに鉛筆貸してきたから、めちゃくちゃ怒った。", "neutral", "other", "private"],
+    ["bot", "鉛筆渡されて怒ったの。", "neutral", "other", "private"],
+    ["user", "うん。", "neutral", "other", "private"],
+    ["bot", "そしたら友だちはなんて？", "neutral", "other", "private"],
+    ["user", "泣いちゃった。", "neutral", "other", "private"],
+    ["bot", "どうしたらよかったんだろね。", "neutral", "other", "private"],
+    null,
+    ["user", "よく失敗するよ", "neutral", "other", "private"],
+    ["bot", "どんな失敗なの？", "neutral", "other", "private"],
+    ["user", "自転車で転んだ。", "neutral", "other", "private"],
+    ["bot", "練習してたの？", "neutral", "other", "private"],
+    ["user", "そう。", "neutral", "other", "private"],
+    ["bot", "練習ならみんなも転ぶでしょう。", "neutral", "other", "private"],
+    ["user", "でもしょっちゅう転ぶ", "neutral", "other", "private"],
+    ["bot", "何でも挑戦する、すごい人だね! ", "neutral", "other", "private"],
+    null,
+    ["user", "すぐけんかするって怒られた。", "neutral", "other", "private"],
+    ["bot", "だれと喧嘩しちゃったの？", "neutral", "other", "private"],
+    ["user", "お兄さんが僕のゲームとった。", "neutral", "other", "private"],
+    ["bot", "それでどうしたの？", "neutral", "other", "private"],
+    ["user", "お母さんに、お兄さんが僕のゲームとったって言った。", "neutral", "other", "private"],
+    ["bot", "じゃあちゃんと自分の気持を言えたんだね。", "neutral", "other", "private"],
+    null,
+    ["user", "人の話を聞かないって言われちゃった。", "neutral", "other", "private"],
+    ["bot", "どんな場面で？", "neutral", "other", "private"]
   ]
 }

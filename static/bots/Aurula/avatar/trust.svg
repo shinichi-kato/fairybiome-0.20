@@ -7,6 +7,9 @@
    id="svg29"
    sodipodi:docname="trust.svg"
    inkscape:version="1.4.4 (1:1.4.4+202605061436+dcaf3e7d9e)"
+   inkscape:export-filename="trust.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -25,9 +28,9 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="0.31687223"
-     inkscape:cx="-359.76646"
-     inkscape:cy="534.91592"
+     inkscape:zoom="1.7925"
+     inkscape:cx="357.04324"
+     inkscape:cy="371.26918"
      inkscape:window-width="1920"
      inkscape:window-height="940"
      inkscape:window-x="0"
@@ -151,7 +154,7 @@
      stroke-width="0.780696"
      id="path16" />
   <path
-     d="m106 68.5c0.169-2.85 4.93-4.74 4.93-4.74l4.39-0.0593s-2.39 1.15-2.5 2.79c-1.11-2-2.81-1.33-6.82 2.01z"
+     d="m 106,67.44 c 0.169,-2.85 4.93,-4.74 4.93,-4.74 l 4.39,-0.0593 c 0,0 -2.39,1.15 -2.5,2.79 -1.11,-2 -2.81,-1.33 -6.82,2.01 z"
      fill="#8e6224"
      id="path17" />
   <ellipse
