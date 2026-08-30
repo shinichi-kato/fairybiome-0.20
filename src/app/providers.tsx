@@ -1,7 +1,13 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import AuthGate from '../auth/AuthGate';
+import { AuthProvider } from '../auth/AuthProvider';
 
 export default function Providers({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return (
+    <AuthProvider>
+      <AuthGate>{children}</AuthGate>
+    </AuthProvider>
+  );
 }

@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import '@firebase-oss/ui-styles/dist.min.css';
+@config '../../tailwind.config.ts';
+@import 'tailwindcss';
 
 * {
   box-sizing: border-box;
@@ -21,6 +21,136 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+:root {
+  --fui-primary: #a2466c;
+  --fui-primary-hover: #7c3454;
+  --fui-primary-surface: #ffffff;
+  --fui-text: #253038;
+  --fui-text-muted: #59656d;
+  --fui-background: #dddddd;
+  --fui-border: #8f9ba1;
+  --fui-input: #eeeeee;
+  --fui-error: #bf3147;
+  --fui-radius: 6px;
+  --fui-radius-card: 8px;
+}
+
+.auth-screen,
+.auth-message {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-screen {
+  background: #dddddd;
+}
+
+.auth-panel {
+  max-width: 440px;
+  width: 100%;
+}
+
+.auth-heading {
+  margin: 0 auto 20px;
+  max-width: 360px;
+  text-align: center;
+}
+
+.auth-heading p {
+  color: #a2466c;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin: 0 0 6px;
+}
+
+.auth-heading h1 {
+  color: #253038;
+  font-size: 1.75rem;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.auth-panel .fui-card {
+  padding: 32px;
+  box-shadow: 0 14px 32px rgba(37, 48, 56, 0.14);
+}
+
+.auth-panel .fui-card__header {
+  margin-bottom: 28px;
+}
+
+.auth-panel .fui-form {
+  gap: 20px;
+}
+
+.auth-panel .fui-form fieldset {
+  gap: 10px;
+}
+
+.auth-panel input {
+  background-color: #eeeeee;
+  border-color: #8f9ba1;
+  border-width: 2px;
+  font-size: 1rem;
+  min-height: 48px;
+  padding: 12px;
+}
+
+.auth-panel input:focus {
+  border-color: #a2466c;
+  outline: 3px solid rgba(162, 70, 108, 0.25);
+}
+
+.auth-panel button {
+  font-size: 1rem;
+  min-height: 48px;
+  padding: 12px 16px;
+}
+
+.auth-panel a,
+.auth-panel button {
+  font-weight: 600;
+}
+
+.auth-message {
+  flex-direction: column;
+  gap: 16px;
+  margin: 0 auto;
+  max-width: 560px;
+  text-align: center;
+}
+
+.auth-message h1,
+.auth-message p {
+  margin: 0;
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .auth-screen,
+  .auth-message {
+    padding: 16px;
+  }
+
+  .auth-heading {
+    margin-bottom: 16px;
+  }
+
+  .auth-panel .fui-card {
+    padding: 24px;
+  }
 }
 
 /* Material UI theme fallback */

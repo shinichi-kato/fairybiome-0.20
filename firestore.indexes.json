@@ -1,4 +1,37 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "log",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "botName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "conversationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtClient",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "log",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "botName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtClient",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

@@ -711,3 +711,145 @@ export class Biomebot {
     return result;
   }
 }
+
+const DEFAULT_CHAT_BACKGROUND_COLOR = '#DDDDDD';
+
+function readBotAvatarDirs() {
+  try {
+    const configured = process.env.NEXT_PUBLIC_BOT_AVATAR_DIRS;
+    return configured ? JSON.parse(configured) : {};
+  } catch {
+    return {};
+  }
+}
+
+function toPartName(path) {
+  return path.replace(/\\/g, '/').split('/').pop()?.replace(/\.json$/, '') ?? '';
+}
+
+/**
+ * Browser client for the ChatUI lifecycle. It is isolated from the legacy
+ * Biomebot API until the remaining part protocol has been migrated.
+ */
+export class ChatBiomebot {
+  constructor(botPaths = {}) {
+    this.botPaths = botPaths;
+    this.broadcastChannels = new Map();
+    this.botWorkers = new Map();
+    this.botStates = new Map();
+    this.avatarDirs = readBotAvatarDirs();
+    this.replyCallbackFunction = null;
+  }
+
+  async deploy(botName) {
+    const paths = this.botPaths[botName];
+    if (!Array.isArray(paths)) {
+      throw new Error(`invalid botName ${botName}`);
+    }
+
+    if (!this.broadcastChannels.has(botName)) {
+      const channel = new BroadcastChannel(`biomebot-${botName}`);
+      channel.onmessage = event => this._handleBroadcast(botName, event.data);
+      this.broadcastChannels.set(botName, channel);
+      this.botStates.set(botName, { isWaitingForOutput: false, inputQueue: [], inFlight: null });
+      this.botWorkers.set(botName, paths.map(path => this._createWorker(botName, toPartName(path))));
+    }
+
+    return {
+      botName,
+      displayName: botName,
+      backgroundColor: DEFAULT_CHAT_BACKGROUND_COLOR,
+    };
+  }
+
+  async input(botName, message) {
+    const state = this.botStates.get(botName);
+    const channel = this.broadcastChannels.get(botName);
+    if (!state || !channel) {
+      throw new Error(`${botName} is not deployed`);
+    }
+
+    if (state.isWaitingForOutput) {
+      state.inputQueue.push(message);
+      return;
+    }
+
+    this._sendInput(botName, message);
+  }
+
+  async shutdown(botName) {
+    for (const worker of this.botWorkers.get(botName) ?? []) {
+      worker.postMessage({ type: 'terminate' });
+      worker.terminate();
+    }
+    this.botWorkers.delete(botName);
+
+    this.broadcastChannels.get(botName)?.close();
+    this.broadcastChannels.delete(botName);
+    this.botStates.delete(botName);
+  }
+
+  _createWorker(botName, partName) {
+    const workerUrl = partName.includes('orchestrator')
+      ? new URL('./parts/orchestrator/Orchestrator.worker.js', import.meta.url)
+      : new URL('./parts/episode/EpisodePart.worker.js', import.meta.url);
+    const worker = new Worker(workerUrl, { type: 'module' });
+
+    worker.postMessage({ type: 'init', botName, partName });
+    worker.postMessage({ type: 'deploy', botName, partName });
+    worker.postMessage({ type: 'activate', botName, partName });
+    return worker;
+  }
+
+  _sendInput(botName, message) {
+    const state = this.botStates.get(botName);
+    const channel = this.broadcastChannels.get(botName);
+    if (!state || !channel) {
+      throw new Error(`${botName} is not deployed`);
+    }
+
+    state.isWaitingForOutput = true;
+    state.inFlight = message;
+    channel.postMessage({ type: 'input', message });
+  }
+
+  _flushInputQueue(botName) {
+    const state = this.botStates.get(botName);
+    if (!state || state.isWaitingForOutput || state.inputQueue.length === 0) {
+      return;
+    }
+
+    this._sendInput(botName, state.inputQueue.shift());
+  }
+
+  _handleBroadcast(botName, event) {
+    if (event?.type !== 'output') {
+      return;
+    }
+
+    const state = this.botStates.get(botName);
+    if (!state) {
+      return;
+    }
+
+    state.isWaitingForOutput = false;
+    const output = event.message;
+    if (output?.text) {
+      const emo = output.emo || 'neutral';
+      this.replyCallbackFunction?.(botName, {
+        ...output,
+        role: 'bot',
+        timestamp: output.timestamp ?? new Date().toISOString(),
+        displayName: output.displayName || botName,
+        backgroundColor: output.backgroundColor || DEFAULT_CHAT_BACKGROUND_COLOR,
+        avatarDir: this.avatarDirs[botName] || botName,
+        avatar: emo,
+        emo,
+        messageId: globalThis.crypto.randomUUID(),
+        replyTo: state.inFlight?.messageId,
+      });
+    }
+    state.inFlight = null;
+    this._flushInputQueue(botName);
+  }
+}

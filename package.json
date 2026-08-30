@@ -16,6 +16,9 @@
     "setup:content": "node scripts/uploadContentToFirestore.js"
   },
   "dependencies": {
+    "@firebase-oss/ui-core": "^7.1.0",
+    "@firebase-oss/ui-react": "^7.1.0",
+    "@firebase-oss/ui-styles": "^7.1.0",
     "dexie": "^4.4.4",
     "firebase": "^12.15.0",
     "firebase-admin": "^14.1.0",
@@ -29,6 +32,7 @@
     "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^26.1.1",
