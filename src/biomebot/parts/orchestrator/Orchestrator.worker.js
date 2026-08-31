@@ -17,7 +17,7 @@
         case 'init': {
             broadcastChannel = new BroadcastChannel(`biomebot-${event.botName}`);
 
-            orchestratorPart.init(event.botName, event.partName,  event.firestoreToken);
+            await orchestratorPart.init(event.botName, event.partName, event.firestoreToken);
             broadcastChannel.onmessage = (channelEvent) => {
                 const payload = channelEvent.data;
                 switch (payload.type) {
@@ -44,6 +44,7 @@
                         break;
                 }
             };
+            postMessage({ type: 'initialized', status: 'ok' });
             return;
         }
 

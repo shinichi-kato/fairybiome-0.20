@@ -40,7 +40,6 @@ export class Biomebot {
   */
   constructor(paths) {
     this.timeout = options.timeout ?? 3000;
-    this.log = [];
     this.staticPaths = { ...paths };
     this.botPartMap = null;
     this.tagPaths = {};
@@ -54,6 +53,9 @@ export class Biomebot {
     this.tags = {}
   }
 
+  log(message) {
+    console.log(message);
+  }
 
   /*
     botPaths={[botName]:[paths]}を与える。
@@ -748,11 +750,21 @@ export class ChatBiomebot {
     }
 
     if (!this.broadcastChannels.has(botName)) {
+      console.log(`[ChatBiomebot] Starting ${botName}`);
       const channel = new BroadcastChannel(`biomebot-${botName}`);
       channel.onmessage = event => this._handleBroadcast(botName, event.data);
       this.broadcastChannels.set(botName, channel);
-      this.botStates.set(botName, { isWaitingForOutput: false, inputQueue: [], inFlight: null });
-      this.botWorkers.set(botName, paths.map(path => this._createWorker(botName, toPartName(path))));
+      this.botStates.set(botName, {
+        isWaitingForOutput: false,
+        inputQueue: [],
+        inFlight: null,
+        initializedWorkerCount: 0,
+        activatedWorkerCount: 0,
+        workerCount: paths.length,
+      });
+      const workers = paths.map(path => this._createWorker(botName, toPartName(path)));
+      this.botWorkers.set(botName, workers);
+      console.log(`[ChatBiomebot] Started ${botName}`);
     }
 
     return {
@@ -769,7 +781,7 @@ export class ChatBiomebot {
       throw new Error(`${botName} is not deployed`);
     }
 
-    if (state.isWaitingForOutput) {
+    if (state.activatedWorkerCount < state.workerCount || state.isWaitingForOutput) {
       state.inputQueue.push(message);
       return;
     }
@@ -791,14 +803,58 @@ export class ChatBiomebot {
 
   _createWorker(botName, partName) {
     const workerUrl = partName.includes('orchestrator')
-      ? new URL('./parts/orchestrator/Orchestrator.worker.js', import.meta.url)
-      : new URL('./parts/episode/EpisodePart.worker.js', import.meta.url);
+      ? '/biomebot-workers/Orchestrator.worker.js'
+      : '/biomebot-workers/EpisodePart.worker.js';
     const worker = new Worker(workerUrl, { type: 'module' });
 
+    let initialized = false;
+    worker.onerror = event => {
+      console.error(`[ChatBiomebot] Worker error ${botName}:${partName}`, event.message);
+    };
+    worker.onmessageerror = event => {
+      console.error(`[ChatBiomebot] Worker message error ${botName}:${partName}`, event);
+    };
+    worker.onmessage = event => {
+      if (!initialized && event.data?.type === 'initialized') {
+        initialized = true;
+        console.log(`[ChatBiomebot] Initialized ${botName}:${partName}`);
+        worker.postMessage({ type: 'deploy', botName, partName });
+        return;
+      }
+
+      if (event.data?.type === 'deployed') {
+        worker.postMessage({ type: 'activate', botName, partName });
+        console.log(`[ChatBiomebot] Deployed ${botName}:${partName}`);
+        this._markWorkerInitialized(botName);
+        return;
+      }
+
+      if (event.data?.type === 'activated') {
+        this._markWorkerActivated(botName);
+        console.log(`[ChatBiomebot] Activated ${botName}:${partName}`);
+      }
+    };
     worker.postMessage({ type: 'init', botName, partName });
-    worker.postMessage({ type: 'deploy', botName, partName });
-    worker.postMessage({ type: 'activate', botName, partName });
     return worker;
+  }
+
+  _markWorkerInitialized(botName) {
+    const state = this.botStates.get(botName);
+    if (!state) {
+      return;
+    }
+
+    state.initializedWorkerCount++;
+  }
+
+  _markWorkerActivated(botName) {
+    const state = this.botStates.get(botName);
+    if (!state) {
+      return;
+    }
+
+    state.activatedWorkerCount++;
+    this._flushInputQueue(botName);
   }
 
   _sendInput(botName, message) {
@@ -815,7 +871,7 @@ export class ChatBiomebot {
 
   _flushInputQueue(botName) {
     const state = this.botStates.get(botName);
-    if (!state || state.isWaitingForOutput || state.inputQueue.length === 0) {
+    if (!state || state.activatedWorkerCount < state.workerCount || state.isWaitingForOutput || state.inputQueue.length === 0) {
       return;
     }
 

@@ -17,7 +17,7 @@ export class Part {
     this.isActive=false;
     this.status = "idle";
 
-    const path = `static/bots/${botName}/${partName}.json`;
+    const path = `/api/bots/${encodeURIComponent(botName)}/${encodeURIComponent(partName)}`;
     let response;
 
     try {

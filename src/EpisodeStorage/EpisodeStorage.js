@@ -61,7 +61,7 @@ export class EpisodeStorage {
     // dataが供給された場合それを優先
     this.botName=botName;
     this.partName=partName;
-    if(!!data){
+    if(!data){
       await this.readStatic(botName,partName);
     }
     else {
@@ -186,7 +186,8 @@ export class EpisodeStorage {
       return;
     }
 
-    const path = `static/bots/${botName}/${partName}.episode.json`;
+    const resourcePartName = partName.endsWith('.episode') ? partName : `${partName}.episode`;
+    const path = `/api/bots/${encodeURIComponent(botName)}/${encodeURIComponent(resourcePartName)}`;
     let response;
 
     try {

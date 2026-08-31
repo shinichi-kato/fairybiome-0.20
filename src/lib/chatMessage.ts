@@ -26,6 +26,18 @@ export type BotDeployment = {
   backgroundColor: string;
 };
 
+export function avatarDirectory(value: unknown, fallback = 'unknown_user'): string {
+  if (typeof value === 'string' && value) {
+    return value;
+  }
+
+  if (value && typeof value === 'object' && 'dir' in value && typeof value.dir === 'string' && value.dir) {
+    return value.dir;
+  }
+
+  return fallback;
+}
+
 export function validateChatInput(value: string): string | null {
   if (!value.trim()) {
     return 'メッセージを入力してください。';

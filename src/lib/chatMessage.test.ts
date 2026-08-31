@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { avatarFileName, MAX_CHAT_MESSAGE_LENGTH, validateChatInput } from './chatMessage';
+import { avatarDirectory, avatarFileName, MAX_CHAT_MESSAGE_LENGTH, validateChatInput } from './chatMessage';
 
 describe('validateChatInput', () => {
   it('rejects blank messages', () => {
@@ -22,5 +22,15 @@ describe('avatarFileName', () => {
 
   it('falls back to neutral for an invalid bot emotion', () => {
     expect(avatarFileName('bot', '../happy')).toBe('neutral.svg');
+  });
+});
+
+describe('avatarDirectory', () => {
+  it('uses the directory from legacy structured avatar data', () => {
+    expect(avatarDirectory({ dir: 'boy1', file: 'peace.svg' })).toBe('boy1');
+  });
+
+  it('uses a fallback when an avatar directory is not available', () => {
+    expect(avatarDirectory(undefined)).toBe('unknown_user');
   });
 });

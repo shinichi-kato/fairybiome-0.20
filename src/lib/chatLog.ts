@@ -13,7 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { type ChatLogMessage } from './chatMessage';
+import { avatarDirectory, type ChatLogMessage } from './chatMessage';
 
 const MAX_LOG_MESSAGES_PER_BOT = 500;
 
@@ -34,7 +34,10 @@ export function subscribeToChatLog(
   return onSnapshot(
     messagesQuery,
     snapshot => {
-      onMessages(snapshot.docs.map(item => ({ id: item.id, ...item.data() }) as ChatLogMessage));
+      onMessages(snapshot.docs.map(item => {
+        const data = item.data();
+        return { id: item.id, ...data, avatarDir: avatarDirectory(data.avatarDir) } as ChatLogMessage;
+      }));
     },
     onError
   );

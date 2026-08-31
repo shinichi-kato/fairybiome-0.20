@@ -73,7 +73,7 @@
     ["user", "> 確かに友達ができたことはある。", "anticipation", "self", "private"],
     ["user", "いるよ。中学からの友達とは今も仲いい。", "trust", "other", "private"],
     ["bot", "> 人間関係を築く力はちゃんと持っている。", "trust", "self", "private"],
-    ["bot", "友達作りが下手というより、新しい環境に慣れるのに時間がかかるタイプなのかもしれないね。", "joy", "other"],
+    ["bot", "友達作りが下手というより、新しい環境に慣れるのに時間がかかるタイプなのかもしれないね。", "joy", "other", "private"],
     null,
     ["user", "言いたいことがうまく言えないよ。", "neutral", "other", "private"],
     ["bot", "> 何があったのかな？", "neutral", "self", "private"],

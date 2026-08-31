@@ -13,7 +13,7 @@
   },
   "columns": ["role","text","date","time","emo","facing", "location"],
   "data": [
-      ["user","？", null,null,"期待","private"],
-      ["bot","うーん",null,null,"期待","private"]
+      ["user","？", null,null,"期待",null,"private"],
+      ["bot","うーん",null,null,"期待",null,"private"]
   ]
 }

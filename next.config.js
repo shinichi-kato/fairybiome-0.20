@@ -77,7 +77,7 @@ function getStaticFilesJson() {
 
       const normalizedPartPaths = partPaths
         .map((filePath) => normalizePath(filePath))
-        .filter((filePath) => filePath.startsWith(`static/bots/${botName}/`) && /\.episode\.json$/i.test(filePath))
+        .filter((filePath) => filePath.startsWith(`static/bots/${botName}/`) && /\.(episode|orchestrator)\.json$/i.test(filePath))
         .sort();
 
       if (normalizedPartPaths.length > 0) {

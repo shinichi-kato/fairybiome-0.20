@@ -18,11 +18,13 @@ export class OrchestratorPart extends Part {
   }
 
   async init(botName, partName, firestoreToken = null) {
-    const data = await _init(botName,partName,firestoreToken);
+    const data = await this._init(botName, partName, firestoreToken);
     
     const factor = data?.factor ?? {};
     const intervals = factor.intervals_msec ?? [300];
     this.factor = { ...factor, intervals_msec: intervals };
+    this.botName = botName;
+    this.partName = partName;
     return true;
   }
 
@@ -37,6 +39,7 @@ export class OrchestratorPart extends Part {
   ポーリング中に受信した他のpartからのinnerVoiceを蓄積
   */
   receiveinnerVoice(message) {
+    console.log(`[OrchestratorPart:${this.partName}] received innerVoice`, message);
     this.innerVoicePool.push(new Message(message));
   }
 
