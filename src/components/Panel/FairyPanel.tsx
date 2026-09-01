@@ -1,5 +1,5 @@
 type FairyPanelRepr = {
-  avatarDir: string;
+  botName: string;
   avatar: string;
   backgroundColor: string;
   botState?: string;
@@ -30,7 +30,7 @@ export default function FairyPanel({ repr }: FairyPanelProps) {
       <div className="absolute bottom-0 left-0 p-0 m-0" style={{ width, height }}>
         <img
           style={{ width, height }}
-          src={`/avatar/chatbot/${repr.avatarDir}/${repr.avatar}.svg`}
+          src={`/api/bots/${repr.botName}/avatar/${repr.avatar}.svg`}
           alt={repr.botState}
         />
       </div>

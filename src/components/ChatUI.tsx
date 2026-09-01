@@ -53,6 +53,13 @@ export default function ChatUI({ botName }: ChatUIProps) {
     const unsubscribe = subscribeToChatLog(user.uid, botName, conversationId, setMessages, snapshotError => setError(snapshotError.message));
     const bot = new ChatBiomebot(readBotPaths());
     botRef.current = bot;
+    bot.displayNameCallbackFunction = (replyBotName: string, displayName: string) => {
+      if (disposed || replyBotName !== botName) {
+        return;
+      }
+
+      setDeployment(prev => (prev ? { ...prev, displayName } : prev));
+    };
     bot.replyCallbackFunction = async (_replyBotName: string, reply: ChatLogMessage & { messageId?: string }) => {
       if (disposed) {
         return;
@@ -68,6 +75,7 @@ export default function ChatUI({ botName }: ChatUIProps) {
           status: 'sent',
           avatar: reply.emo || 'neutral',
           emo: reply.emo || 'neutral',
+          createdAtClient: Date.now(),
         });
       } catch (callbackError) {
         if (!disposed) {
@@ -159,14 +167,22 @@ export default function ChatUI({ botName }: ChatUIProps) {
         {messages.map(message => {
           const isBot = message.role === 'bot';
           const avatarPath = isBot
-            ? `/avatar/chatbot/${message.avatarDir}/${avatarFileName('bot', message.emo)}`
+            ? `/api/bots/${message.botName}/avatar/${avatarFileName('bot', message.emo)}`
             : `/avatar/user/${message.avatarDir}/peace.svg`;
           return (
             <article key={message.id} className={`mb-4 flex items-end gap-2 ${isBot ? '' : 'flex-row-reverse'}`}>
               <img className="h-11 w-11 shrink-0 object-contain" src={avatarPath} alt="" />
               <div className={`max-w-[78%] ${isBot ? '' : 'text-right'}`}>
                 <p className="mb-1 text-xs font-semibold text-gray-700">{message.displayName}</p>
-                <p className="whitespace-pre-wrap break-words border border-gray-400 bg-white px-3 py-2 text-left text-gray-900">{message.text}</p>
+                <p
+                  className={`relative whitespace-pre-wrap break-words rounded-2xl border border-gray-400 bg-white px-3 py-2 text-left text-gray-900 ${
+                    isBot
+                      ? "before:absolute before:-left-[9px] before:bottom-2 before:border-8 before:border-transparent before:border-r-gray-400 after:absolute after:-left-2 after:bottom-2 after:border-8 after:border-transparent after:border-r-white"
+                      : "before:absolute before:-right-[9px] before:bottom-2 before:border-8 before:border-transparent before:border-l-gray-400 after:absolute after:-right-2 after:bottom-2 after:border-8 after:border-transparent after:border-l-white"
+                  }`}
+                >
+                  {message.text}
+                </p>
                 {message.status === 'failed' && <p className="mt-1 text-xs text-red-700">{message.error ?? '送信に失敗しました。'}</p>}
               </div>
             </article>
@@ -177,7 +193,7 @@ export default function ChatUI({ botName }: ChatUIProps) {
         {latestBotMessage ? (
           <FairyPanel
             repr={{
-              avatarDir: latestBotMessage.avatarDir,
+              botName: latestBotMessage.botName,
               avatar: latestBotMessage.avatar,
               backgroundColor: latestBotMessage.backgroundColor,
               botState: latestBotMessage.emo,

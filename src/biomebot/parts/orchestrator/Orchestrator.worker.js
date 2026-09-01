@@ -44,7 +44,7 @@
                         break;
                 }
             };
-            postMessage({ type: 'initialized', status: 'ok' });
+            postMessage({ type: 'initialized', status: 'ok', displayName: orchestratorPart.displayName });
             return;
         }
 

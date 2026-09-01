@@ -25,9 +25,7 @@ onmessage = async (messageEvent) => {
 
         switch (payload.type) {
           case 'input': {
-            console.log(`[EpisodePart:${event.partName}] received input`, payload.message);
             const messages = episodePart.input(payload.message);
-            console.log(`[EpisodePart:${event.partName}] produced innerVoice`, messages);
             for (const message of messages) {
               broadcastChannel.postMessage({ type: 'innerVoice', message });
             }

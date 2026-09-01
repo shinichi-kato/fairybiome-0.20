@@ -15,6 +15,9 @@ export class OrchestratorPart extends Part {
     super();
     this.innerVoicePool = [];
     this.inputQueue = [];
+    // orchestratorはEpisodeStorage等のengineを持たないため_checkEngineを通す
+    this.engineName = 'Orchestrator';
+    this.engine = this;
   }
 
   async init(botName, partName, firestoreToken = null) {
@@ -25,6 +28,7 @@ export class OrchestratorPart extends Part {
     this.factor = { ...factor, intervals_msec: intervals };
     this.botName = botName;
     this.partName = partName;
+    this.displayName = typeof data?.displayName === 'string' && data.displayName ? data.displayName : botName;
     return true;
   }
 
@@ -39,7 +43,6 @@ export class OrchestratorPart extends Part {
   ポーリング中に受信した他のpartからのinnerVoiceを蓄積
   */
   receiveinnerVoice(message) {
-    console.log(`[OrchestratorPart:${this.partName}] received innerVoice`, message);
     this.innerVoicePool.push(new Message(message));
   }
 

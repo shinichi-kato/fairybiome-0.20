@@ -739,8 +739,10 @@ export class ChatBiomebot {
     this.broadcastChannels = new Map();
     this.botWorkers = new Map();
     this.botStates = new Map();
+    this.botDisplayNames = new Map();
     this.avatarDirs = readBotAvatarDirs();
     this.replyCallbackFunction = null;
+    this.displayNameCallbackFunction = null;
   }
 
   async deploy(botName) {
@@ -769,7 +771,7 @@ export class ChatBiomebot {
 
     return {
       botName,
-      displayName: botName,
+      displayName: this.botDisplayNames.get(botName) || botName,
       backgroundColor: DEFAULT_CHAT_BACKGROUND_COLOR,
     };
   }
@@ -818,6 +820,9 @@ export class ChatBiomebot {
       if (!initialized && event.data?.type === 'initialized') {
         initialized = true;
         console.log(`[ChatBiomebot] Initialized ${botName}:${partName}`);
+        if (event.data.displayName) {
+          this._setBotDisplayName(botName, event.data.displayName);
+        }
         worker.postMessage({ type: 'deploy', botName, partName });
         return;
       }
@@ -845,6 +850,11 @@ export class ChatBiomebot {
     }
 
     state.initializedWorkerCount++;
+  }
+
+  _setBotDisplayName(botName, displayName) {
+    this.botDisplayNames.set(botName, displayName);
+    this.displayNameCallbackFunction?.(botName, displayName);
   }
 
   _markWorkerActivated(botName) {
@@ -896,7 +906,7 @@ export class ChatBiomebot {
         ...output,
         role: 'bot',
         timestamp: output.timestamp ?? new Date().toISOString(),
-        displayName: output.displayName || botName,
+        displayName: this.botDisplayNames.get(botName) || botName,
         backgroundColor: output.backgroundColor || DEFAULT_CHAT_BACKGROUND_COLOR,
         avatarDir: this.avatarDirs[botName] || botName,
         avatar: emo,
